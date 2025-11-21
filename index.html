@@ -45,6 +45,20 @@
         const { useState, useEffect, useCallback, useRef, useMemo } = React;
         const MODRINTH_API_BASE = "https://api.modrinth.com/v2";
 
+        // --- Custom Hooks ---
+        function useDebounce(value, delay) {
+          const [debouncedValue, setDebouncedValue] = useState(value);
+          useEffect(() => {
+            const handler = setTimeout(() => {
+              setDebouncedValue(value);
+            }, delay);
+            return () => {
+              clearTimeout(handler);
+            };
+          }, [value, delay]);
+          return debouncedValue;
+        }
+
         // ------------------------------------------------------------------
         // --- FIREBASE SETUP ---
         // ------------------------------------------------------------------
@@ -223,9 +237,14 @@
         };
 
         // Improved High-Contrast Note Component
-        const NoteInput = ({ initialValue, onSave }) => {
+        const NoteInput = ({ initialValue, onSave, isLocked = false }) => {
           const [value, setValue] = useState(initialValue || '');
           const [saved, setSaved] = useState(true);
+
+          // Update local state if initialValue changes (e.g. from DB sync)
+          useEffect(() => {
+            setValue(initialValue || '');
+          }, [initialValue]);
 
           const handleChange = (e) => {
             setValue(e.target.value);
@@ -239,19 +258,28 @@
             }
           };
 
+          if (isLocked) {
+             return (
+                <div className="mt-3 bg-slate-900/50 border-l-2 border-slate-600 rounded-r-md p-3 flex items-center gap-3 opacity-75">
+                    <Icon name="lock" className="w-3 h-3 text-slate-500 shrink-0" title="Locked by author" />
+                    <p className="text-xs text-slate-400 italic w-full break-words leading-relaxed">{value}</p>
+                </div>
+             );
+          }
+
           return (
-            <div className="mt-3 bg-slate-950 border-l-2 border-yellow-500 rounded-r-md p-2 relative group transition-all hover:bg-slate-900">
+            <div className="mt-3 bg-slate-950 border-l-2 border-yellow-500 rounded-r-md p-3 relative group transition-all hover:bg-slate-900">
                 <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                     {saved ? <Icon name="check-circle" className="w-3 h-3 text-emerald-500" /> : <Icon name="save" className="w-3 h-3 text-amber-500 animate-pulse" />}
                 </div>
-                <div className="flex items-start gap-2">
-                    <Icon name="file-lines" className="w-3 h-3 text-yellow-500 mt-1 shrink-0" />
+                <div className="flex items-center gap-3">
+                    <Icon name="file-lines" className="w-3 h-3 text-yellow-500 shrink-0" />
                     <textarea
                         value={value}
                         onChange={handleChange}
                         onBlur={handleBlur}
                         placeholder="Add a note..."
-                        className="w-full bg-transparent border-none text-xs text-slate-200 placeholder:text-slate-600 focus:ring-0 p-0 resize-none h-auto min-h-[1.5em]"
+                        className="w-full bg-transparent border-none text-xs text-slate-200 placeholder:text-slate-600 focus:ring-0 p-0 resize-none h-auto min-h-[1.5em] leading-relaxed"
                         rows={1}
                         style={{ fieldSizing: 'content' }}
                     />
@@ -359,7 +387,16 @@
         };
 
         // --- Mod Card Component (Extracted for reuse in Modal) ---
-        const ModCard = ({ mod, allMods, isCheckingUpdates, accessLevel, activeTab, onVersionChange, onApprove, onRemove, onAddDependency, onEditDependency, isModal = false, onUpdateNote }) => {
+        const ModCard = ({ mod, allMods, isCheckingUpdates, accessLevel, activeTab, onVersionChange, onApprove, onRemove, onAddDependency, onEditDependency, isModal = false, onUpdateNote, currentUser, onVote }) => {
+            
+            const isLocked = mod.note && mod.noteAuthorId && mod.noteAuthorId !== currentUser?.uid && accessLevel !== 'admin';
+            
+            // Voting Logic
+            const upvotes = mod.upvotes || [];
+            const downvotes = mod.downvotes || [];
+            const hasUpvoted = currentUser && upvotes.includes(currentUser.uid);
+            const hasDownvoted = currentUser && downvotes.includes(currentUser.uid);
+
             return (
                 <Card className={`p-4 transition-colors ${isCheckingUpdates ? 'opacity-70' : 'opacity-100'} ${mod.target_version_number === 'None Found' ? 'border-red-900/30 bg-red-900/5' : 'hover:bg-slate-800/80'}`}>
                     <div className="flex flex-col md:flex-row md:items-center gap-4 justify-between">
@@ -369,7 +406,6 @@
                         {mod.icon_url ? (
                             <img src={mod.icon_url} className="w-12 h-12 rounded bg-slate-900 object-cover" /> 
                         ) : (
-                            // FIX: Use larger icon for the placeholder
                             <div className="w-12 h-12 rounded bg-slate-900 flex items-center justify-center">
                                 <Icon name="cube" className="w-6 h-6 text-slate-400" />
                             </div>
@@ -386,53 +422,85 @@
                         {activeTab === 'wishlist' && (
                             <NoteInput 
                                 initialValue={mod.note} 
-                                onSave={(val) => onUpdateNote(mod.id, val)}
+                                isLocked={isLocked}
+                                onSave={(val) => onUpdateNote(mod.id, val, currentUser?.uid)}
                             />
                         )}
                         </div>
                     </div>
 
                     {/* Versions Dropdown - Disabled if User & Active Tab */}
-                    <div className="flex items-center gap-6 bg-slate-900/50 p-3 rounded-lg border border-slate-700/50">
-                        <div className="flex flex-col items-end min-w-[140px]">
-                            <span className="text-[10px] text-slate-500 font-bold uppercase mb-1">Installed</span>
-                            <div className="relative w-full">
-                            <select 
-                                value={mod.installed_version}
-                                onChange={(e) => onVersionChange(mod.id, e.target.value)}
-                                disabled={activeTab === 'active' && accessLevel === 'user'} // LOCK FOR USERS
-                                className="w-full appearance-none bg-slate-800 border border-slate-600 hover:border-slate-500 text-slate-300 text-sm font-mono py-1 pl-2 pr-6 rounded cursor-pointer focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                {!mod.server_candidates || mod.server_candidates.length === 0 
-                                ? <option>No Ver</option> 
-                                : [...new Set(mod.server_candidates)].map(v => <option key={v} value={v}>{v}</option>)
-                                }
-                            </select>
-                            {(activeTab !== 'active' || accessLevel === 'admin') && <Icon name="chevron-down" className="w-3 h-3 text-slate-500 absolute right-2 top-2 pointer-events-none" />}
+                    {activeTab === 'active' && (
+                        <div className="flex items-center gap-6 bg-slate-900/50 p-3 rounded-lg border border-slate-700/50">
+                            <div className="flex flex-col items-end min-w-[140px]">
+                                <span className="text-[10px] text-slate-500 font-bold uppercase mb-1">Installed</span>
+                                <div className="relative w-full">
+                                <select 
+                                    value={mod.installed_version}
+                                    onChange={(e) => onVersionChange(mod.id, e.target.value)}
+                                    disabled={accessLevel === 'user'} // LOCK FOR USERS
+                                    className="w-full appearance-none bg-slate-800 border border-slate-600 hover:border-slate-500 text-slate-300 text-sm font-mono py-1 pl-2 pr-6 rounded cursor-pointer focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {!mod.server_candidates || mod.server_candidates.length === 0 
+                                    ? <option>No Ver</option> 
+                                    : [...new Set(mod.server_candidates)].map(v => <option key={v} value={v}>{v}</option>)
+                                    }
+                                </select>
+                                {accessLevel === 'admin' && <Icon name="chevron-down" className="w-3 h-3 text-slate-500 absolute right-2 top-2 pointer-events-none" />}
+                                </div>
+                            </div>
+                            <Icon name="arrow-right" className="w-4 h-4 text-slate-600" />
+                            <div className="flex flex-col items-start min-w-[140px]">
+                                <span className="text-[10px] text-emerald-500/70 font-bold uppercase mb-1">Target</span>
+                                <div className="flex items-center gap-2 h-[28px]">
+                                <span className={`font-mono text-sm font-bold ${mod.target_version_number === 'None Found' ? 'text-red-400' : 'text-emerald-400'}`}>
+                                    {mod.target_version_number === 'None Found' ? 'Not Ready' : mod.target_version_number}
+                                </span>
+                                </div>
                             </div>
                         </div>
-                        <Icon name="arrow-right" className="w-4 h-4 text-slate-600" />
-                        {/* Target Version Display (Read Only) */}
-                        <div className="flex flex-col items-start min-w-[140px]">
-                            <span className="text-[10px] text-emerald-500/70 font-bold uppercase mb-1">Target</span>
-                            <div className="flex items-center gap-2 h-[28px]">
-                            <span className={`font-mono text-sm font-bold ${mod.target_version_number === 'None Found' ? 'text-red-400' : 'text-emerald-400'}`}>
-                                {mod.target_version_number === 'None Found' ? 'Not Ready' : mod.target_version_number}
-                            </span>
-                            </div>
-                        </div>
-                    </div>
+                    )}
                     
-                    {/* Actions */}
+                    {/* Actions & Voting */}
                     <div className="flex items-center gap-2">
-                        {/* Approve (Admin + Wishlist only) */}
+                        
+                        {/* Voting Controls (Wishlist Only) */}
+                        {activeTab === 'wishlist' && (
+                            <div className="flex items-center gap-2 bg-slate-900/50 rounded-lg px-2 py-1.5 border border-slate-700 mr-2">
+                                <button 
+                                    onClick={() => onVote(mod.id, 'up')}
+                                    className={`flex items-center gap-1.5 px-1.5 rounded hover:bg-slate-800 transition-colors ${hasUpvoted ? 'text-emerald-400' : 'text-slate-500 hover:text-emerald-300'}`}
+                                    title="Vote Up"
+                                >
+                                    <Icon name="thumbs-up" className="w-4 h-4" />
+                                    <span className="text-xs font-bold font-mono">{upvotes.length}</span>
+                                </button>
+                                
+                                <div className="w-px h-4 bg-slate-700"></div>
+                                
+                                <button 
+                                    onClick={() => onVote(mod.id, 'down')}
+                                    className={`flex items-center gap-1.5 px-1.5 rounded hover:bg-slate-800 transition-colors ${hasDownvoted ? 'text-red-400' : 'text-slate-500 hover:text-red-300'}`}
+                                    title="Vote Down"
+                                >
+                                    <Icon name="thumbs-down" className="w-4 h-4" />
+                                    <span className="text-xs font-bold font-mono">{downvotes.length}</span>
+                                </button>
+                            </div>
+                        )}
+
+                        {/* Approve / Star (Admin + Wishlist only) */}
                         {activeTab === 'wishlist' && accessLevel === 'admin' && (
-                            <button onClick={() => onApprove(mod)} className="p-2 text-emerald-400 bg-emerald-900/20 hover:bg-emerald-900/40 rounded transition-colors"><Icon name="thumbs-up" className="w-5 h-5" /></button>
+                            <button onClick={() => onApprove(mod)} title="Promote to Server Mods" className="p-2 text-yellow-400 bg-yellow-900/20 hover:bg-yellow-900/40 border border-yellow-900/30 rounded transition-colors">
+                                <Icon name="star" className="w-5 h-5" />
+                            </button>
                         )}
                         
-                        {/* Delete (Admin always, User only in Wishlist) */}
-                        {(accessLevel === 'admin' || activeTab === 'wishlist') && (
-                            <button onClick={() => onRemove(mod.id)} className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-900/20 rounded transition-colors"><Icon name="trash-can" className="w-5 h-5" /></button>
+                        {/* Delete (ADMIN ONLY ALWAYS) */}
+                        {accessLevel === 'admin' && (
+                            <button onClick={() => onRemove(mod.id)} title="Remove Mod" className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-900/20 rounded transition-colors">
+                                <Icon name="trash-can" className="w-5 h-5" />
+                            </button>
                         )}
                     </div>
                     </div>
@@ -508,12 +576,20 @@
           const [isSyncing, setIsSyncing] = useState(false);
           const [copyFeedback, setCopyFeedback] = useState(false); // Used for Invite Link
           const [ipCopyFeedback, setIpCopyFeedback] = useState(false); // Used for Server IP
-          // FIX: NEW STATES for Admin/User Code copy feedback
           const [adminCodeCopyFeedback, setAdminCodeCopyFeedback] = useState(false);
           const [userCodeCopyFeedback, setUserCodeCopyFeedback] = useState(false);
-          // FIX: ADDED MISSING UI STATE VARIABLES
           const [showScriptModal, setShowScriptModal] = useState(false); 
           const [editingDependencyId, setEditingDependencyId] = useState(null); 
+          
+          // --- Search State ---
+          const [searchResults, setSearchResults] = useState([]);
+          const [showDropdown, setShowDropdown] = useState(false);
+          const debouncedSearch = useDebounce(modInput, 300);
+
+          // --- Edit IP State ---
+          const [isEditingIP, setIsEditingIP] = useState(false);
+          const [editIPValue, setEditIPValue] = useState('');
+
           // --- Creation State ---
           const [newServerName, setNewServerName] = useState('');
           const [newServerIP, setNewServerIP] = useState('');
@@ -527,7 +603,6 @@
           useEffect(() => {
             const initAuth = async () => {
               try {
-                // Using firebase.auth().signInAnonymously() globally
                 await auth.signInAnonymously();
               } catch (e) {
                 console.error("Authentication Error:", e);
@@ -535,7 +610,6 @@
               }
             };
             initAuth();
-            // Using firebase.auth().onAuthStateChanged globally
             return auth.onAuthStateChanged(setUser);
           }, []);
 
@@ -545,7 +619,6 @@
             setLoading(true);
             
             try {
-              // Accessing firestore globally
               const codeUpper = code.trim().toUpperCase();
               
               const qAdmin = db.collection('artifacts').doc(storageAppId).collection('public').doc('data').collection('servers').where('adminCode', '==', codeUpper).limit(1);
@@ -581,6 +654,10 @@
                 setSessionCodes(foundCodes);
                 // SAVE TO LOCAL STORAGE
                 localStorage.setItem('modrinth-server-code', codeUpper);
+                
+                // DEFAULT TAB LOGIC: Users go to Wishlist, Admins go to Active
+                setActiveTab(role === 'admin' ? 'active' : 'wishlist');
+                
                 setView('dashboard');
               } else {
                 setError("Invalid Access Code.");
@@ -645,6 +722,40 @@
             return () => unsubscribe();
           }, [user, serverDocId]);
 
+          // --- Search Effect ---
+          useEffect(() => {
+              if (!debouncedSearch || debouncedSearch.length < 2) {
+                  setSearchResults([]);
+                  return;
+              }
+
+              // Don't search if it looks like a URL or strict ID
+              if (debouncedSearch.includes('/') || debouncedSearch.includes('modrinth.com')) {
+                  setSearchResults([]);
+                  return;
+              }
+
+              const doSearch = async () => {
+                  try {
+                      // Filter for specific loader AND ensure it's a mod (not a modpack/resourcepack)
+                      // NEW: Also filter for mods compatible with Server Version OR Target Version
+                      const facets = JSON.stringify([
+                          [`categories:${loader}`], 
+                          ["project_type:mod"],
+                          [`versions:${serverVersion}`, `versions:${targetVersion}`]
+                      ]);
+                      
+                      const res = await fetch(`${MODRINTH_API_BASE}/search?query=${debouncedSearch}&limit=5&facets=${facets}`);
+                      const data = await res.json();
+                      setSearchResults(data.hits || []);
+                      setShowDropdown(true);
+                  } catch (e) {
+                      console.error("Search error", e);
+                  }
+              };
+              doSearch();
+          }, [debouncedSearch, loader, serverVersion, targetVersion]);
+
           // --- Actions ---
 
           const handleCreateServer = async (e) => {
@@ -666,7 +777,6 @@
             const newDocId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : Math.random().toString(36).substring(2, 15);
 
             try {
-              // Access firestore globally
               const docRef = db.collection('artifacts').doc(storageAppId).collection('public').doc('data').collection('servers').doc(newDocId);
               await docRef.set({
                 createdAt: new Date().toISOString(),
@@ -687,6 +797,7 @@
               setServerIP(newServerIP.trim());
               
               localStorage.setItem('modrinth-server-code', adminCode);
+              setActiveTab('active'); // Admins start on active
               
               setView('dashboard');
             } catch (err) {
@@ -716,7 +827,6 @@
 
           const saveToServer = async (newMods, newWishlist) => {
             if (!serverDocId) return;
-            // Access firestore globally
             const docRef = db.collection('artifacts').doc(storageAppId).collection('public').doc('data').collection('servers').doc(serverDocId);
             await docRef.update({
               mods: newMods || mods,
@@ -740,14 +850,11 @@
             return await response.json();
           };
 
-          // Improved fetcher to get primary file URL for script
           const fetchModVersions = useCallback(async (slug) => {
             try {
               const query = `?loaders=["${loader}"]&game_versions=${JSON.stringify([serverVersion, targetVersion])}`;
               const response = await fetch(`${MODRINTH_API_BASE}/project/${slug}/version${query}`);
               const versions = await response.json();
-              
-              // Enhance versions with primary file URL
               return versions.map(v => {
                   const primaryFile = v.files.find(f => f.primary) || v.files[0];
                   return {
@@ -765,6 +872,10 @@
             const inputVal = manualInput || modInput;
 
             if (!inputVal.trim()) return;
+            
+            // Clear search UI immediately
+            setSearchResults([]);
+            setShowDropdown(false);
             
             const trimmed = inputVal.trim();
             const match = trimmed.match(/modrinth\.com\/[\w-]+\/([^\/?#\s]+)/);
@@ -802,12 +913,13 @@
                 target_version_number: latestTarget ? latestTarget.version_number : 'None Found',
                 target_file_url: latestTarget ? `https://modrinth.com/mod/${info.slug}/version/${latestTarget.version_number}` : null,
                 primary_file_url: latestTarget ? latestTarget.primary_file_url : null,
-                // Store dependencies so we can check them later
                 dependencies: latestServer ? latestServer.dependencies : [],
                 project_url: `https://modrinth.com/mod/${info.slug}`,
                 updated_at: new Date().toISOString(),
                 status: latestTarget ? 'ready' : 'missing',
-                note: '' // For Wishlist
+                note: '',
+                upvotes: [], // New
+                downvotes: [] // New
               };
 
               if (activeTab === 'active') {
@@ -841,17 +953,57 @@
              
              let newMods = [...mods];
              if (!mods.some(m => m.slug === mod.slug)) {
-                // Clear note before moving to active
-                const cleanMod = { ...mod, note: undefined };
+                // Clear note and vote data before moving to active
+                const { note, noteAuthorId, upvotes, downvotes, ...cleanMod } = mod;
                 newMods.push(cleanMod);
              }
              await saveToServer(newMods, newWishlist);
           };
+          
+          const handleVote = async (modId, type) => {
+            if (!user) return;
+            const uid = user.uid;
+            const updatedWishlist = wishlist.map(m => {
+                if (m.id !== modId) return m;
+                
+                // Safety initialize arrays
+                let ups = m.upvotes || [];
+                let downs = m.downvotes || [];
 
-          const handleUpdateNote = async (modId, newNote) => {
-              const updatedWishlist = wishlist.map(m => 
-                  m.id === modId ? { ...m, note: newNote } : m
-              );
+                // Check existing votes
+                const hadUp = ups.includes(uid);
+                const hadDown = downs.includes(uid);
+
+                // Remove user from both arrays initially (reset vote)
+                ups = ups.filter(id => id !== uid);
+                downs = downs.filter(id => id !== uid);
+
+                // If it was a toggle (e.g. clicked Up when already Up), we leave it removed (neutral).
+                // If it was a new vote or a switch, we add it to the correct array.
+                
+                if (type === 'up' && !hadUp) {
+                    ups.push(uid);
+                }
+                if (type === 'down' && !hadDown) {
+                    downs.push(uid);
+                }
+
+                return { ...m, upvotes: ups, downvotes: downs };
+            });
+            await saveToServer(null, updatedWishlist);
+          };
+
+          const handleUpdateNote = async (modId, newNote, authorId) => {
+              const updatedWishlist = wishlist.map(m => {
+                  if (m.id === modId) {
+                      const currentAuthor = m.noteAuthorId || authorId;
+                      if (m.noteAuthorId && m.noteAuthorId !== authorId && accessLevel !== 'admin') {
+                          return m; 
+                      }
+                      return { ...m, note: newNote, noteAuthorId: currentAuthor };
+                  }
+                  return m;
+              });
               await saveToServer(null, updatedWishlist);
           };
 
@@ -878,7 +1030,6 @@
             }
           };
           
-          // FIX: New dedicated handlers for Admin/User Code copies
           const handleCopyAdminCode = () => {
               const success = copyToClipboard(sessionCodes.admin);
               if (success) {
@@ -902,6 +1053,21 @@
               setIpCopyFeedback(true);
               setTimeout(() => setIpCopyFeedback(false), 2000);
             }
+          };
+
+          const handleSaveIP = async () => {
+              if (!serverDocId || accessLevel !== 'admin') return;
+              try {
+                  const docRef = db.collection('artifacts').doc(storageAppId).collection('public').doc('data').collection('servers').doc(serverDocId);
+                  await docRef.update({
+                      serverIP: editIPValue.trim()
+                  });
+                  // Local state update via snapshot listener will happen automatically, 
+                  // but we close edit mode immediately
+                  setIsEditingIP(false);
+              } catch (e) {
+                  console.error("Failed to update IP:", e);
+              }
           };
 
           // --- Local Backup Handlers ---
@@ -1048,8 +1214,8 @@
               <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4 text-slate-200 font-sans">
                 <div className="max-w-md w-full space-y-8">
                   <div className="text-center">
-                     <div className="inline-flex p-10 bg-emerald-600 rounded-2xl shadow-2xl shadow-emerald-900/50 mb-4">
-                        <Icon name="cube" className="text-white" style={{ fontSize: '96px' }} />
+                     <div className="inline-flex p-6 bg-emerald-600 rounded-2xl shadow-2xl shadow-emerald-900/50 mb-6">
+                        <Icon name="cube" className="text-white text-[64px]" />
                   </div>
                     <h1 className="text-3xl font-bold text-white tracking-tight mb-2">Fabric Mod Manager</h1>
                     <p className="text-slate-400">Track mod updates and sync your modlist with friends.</p>
@@ -1093,8 +1259,8 @@
               <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4 text-slate-200 font-sans">
                 <div className="max-w-md w-full space-y-8">
                   <div className="text-center mb-4">
-                    <div className="inline-flex p-4 bg-emerald-600 rounded-2xl shadow-2xl shadow-emerald-900/50 mb-4">
-                      <Icon name="cube" className="text-white" style={{ fontSize: '96px' }} />
+                    <div className="inline-flex p-6 bg-emerald-600 rounded-2xl shadow-2xl shadow-emerald-900/50 mb-6">
+                      <Icon name="cube" className="text-white text-[64px]" />
                   </div>
                     <h1 className="text-2xl font-bold text-white tracking-tight">Setup Server</h1>
                     <p className="text-slate-400 text-sm">Create a shared space for your mods.</p>
@@ -1194,15 +1360,49 @@
                           <h1 className="text-xl font-bold text-white tracking-tight">{serverName}</h1>
                           {isSyncing ? <Icon name="wifi" className="w-3 h-3 text-emerald-500 animate-pulse" /> : <div className="w-2 h-2 rounded-full bg-slate-700" />}
                         </div>
-                        {/* IP Display */}
-                        {serverIP && (
-                           <div className="flex items-center gap-2 mt-0.5 group cursor-pointer" onClick={handleCopyIP}>
-                              <Icon name="globe" className="w-3 h-3 text-slate-500" />
-                              {/* FIX: Added Server IP: label */}
-                              <span className="text-xs text-slate-500">Server IP:</span> 
-                              <span className="text-xs font-mono text-slate-400 group-hover:text-emerald-400 transition-colors">{serverIP}</span>
-                              {ipCopyFeedback ? <Icon name="circle-check" className="w-3 h-3 text-emerald-500" /> : <Icon name="copy" className="w-3 h-3 text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity" />}
-                           </div>
+                        
+                        {/* IP Display & Edit */}
+                        {(serverIP || accessLevel === 'admin') && (
+                            <div className="mt-0.5 min-h-[20px]">
+                                {isEditingIP ? (
+                                    <div className="flex items-center gap-2 animate-in fade-in duration-200">
+                                        <input 
+                                            type="text" 
+                                            value={editIPValue}
+                                            onChange={(e) => setEditIPValue(e.target.value)}
+                                            className="bg-slate-900 border border-slate-700 rounded px-2 py-0.5 text-xs text-slate-200 font-mono focus:border-emerald-500 outline-none w-48 placeholder:text-slate-600"
+                                            placeholder="Enter Server IP"
+                                            autoFocus
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') handleSaveIP();
+                                                if (e.key === 'Escape') setIsEditingIP(false);
+                                            }}
+                                        />
+                                        <button onClick={handleSaveIP} className="text-emerald-500 hover:text-emerald-400 p-1"><Icon name="check" className="w-3 h-3" /></button>
+                                        <button onClick={() => setIsEditingIP(false)} className="text-red-500 hover:text-red-400 p-1"><Icon name="xmark" className="w-3 h-3" /></button>
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center gap-2 group">
+                                         <div className="flex items-center gap-2 cursor-pointer" onClick={handleCopyIP} title={serverIP ? "Copy IP" : ""}>
+                                            <Icon name="globe" className="w-3 h-3 text-slate-500" />
+                                            <span className="text-xs text-slate-500">Server IP:</span> 
+                                            <span className={`text-xs font-mono transition-colors ${!serverIP ? 'text-slate-600 italic' : 'text-slate-400 group-hover:text-emerald-400'}`}>
+                                                {serverIP || 'Not Set'}
+                                            </span>
+                                            {serverIP && (ipCopyFeedback ? <Icon name="circle-check" className="w-3 h-3 text-emerald-500" /> : <Icon name="copy" className="w-3 h-3 text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity" />)}
+                                         </div>
+                                         {accessLevel === 'admin' && (
+                                             <button 
+                                                onClick={() => { setEditIPValue(serverIP || ''); setIsEditingIP(true); }} 
+                                                className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-600 hover:text-white p-1"
+                                                title="Edit Server IP"
+                                             >
+                                                 <Icon name="pencil" className="w-3 h-3" />
+                                             </button>
+                                         )}
+                                    </div>
+                                )}
+                            </div>
                         )}
                       </div>
                     </div>
@@ -1220,7 +1420,6 @@
                                     <span className="text-xs text-emerald-400 font-mono font-bold tracking-wider leading-none mt-1">{sessionCodes.admin}</span>
                                 </div>
                                 
-                                {/* FIX: Use button wrapper as provided by user */}
                                 {adminCodeCopyFeedback ? (
                                     <Icon name="circle-check" className="w-3 h-3 text-emerald-400" title="Copied!" />
                                 ) : (
@@ -1239,7 +1438,6 @@
                                     <span className="text-xs text-slate-300 font-mono font-bold tracking-wider leading-none mt-1">{sessionCodes.user}</span>
                                 </div>
                                 
-                                {/* FIX: Use button wrapper as provided by user */}
                                 {userCodeCopyFeedback ? (
                                     <Icon name="circle-check" className="w-3 h-3 text-emerald-400" title="Copied!" />
                                 ) : (
@@ -1336,7 +1534,7 @@
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   
                   {/* Add Mod Form */}
-                  <Card className="md:col-span-2 p-5">
+                  <Card className="md:col-span-2 p-5 overflow-visible"> 
                      {/* Disable Add to Server if User, Allow Add to Wishlist always */}
                      {(activeTab === 'active' && accessLevel === 'user') ? (
                          <div className="h-full flex flex-col items-center justify-center text-slate-500 py-4">
@@ -1347,23 +1545,77 @@
                      ) : (
                         <>
                           <h2 className={`text-sm font-bold uppercase tracking-wider mb-4 flex items-center gap-2 ${activeTab === 'active' ? 'text-emerald-400' : 'text-purple-400'}`}>
-                            <Icon name="plus" className="w-4 h-4" /> Add to {activeTab === 'active' ? 'Server' : 'Wishlist'}
+                            <Icon name="magnifying-glass" className="w-4 h-4" /> Search {activeTab === 'active' ? 'Server Mods' : 'Wishlist'}
                           </h2>
-                          <form onSubmit={handleAddMod} className="flex gap-3">
-                            <div className="flex-1 relative">
+                          <div className="flex gap-3 relative">
+                            <div className="flex-1 relative group">
+                              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <Icon name="search" className="text-slate-500" />
+                              </div>
                               <input 
                                 type="text" 
                                 value={modInput}
-                                onChange={(e) => setModInput(e.target.value)}
-                                placeholder="Paste Modrinth URL or Enter Slug"
-                                className="w-full bg-slate-900 border border-slate-700 rounded px-4 py-3 text-slate-200 focus:outline-none focus:border-emerald-500 placeholder:text-slate-600"
+                                onChange={(e) => {
+                                    setModInput(e.target.value);
+                                    if(e.target.value.length < 2) setShowDropdown(false);
+                                }}
+                                onFocus={() => {
+                                    if(searchResults.length > 0) setShowDropdown(true);
+                                }}
+                                onBlur={() => {
+                                    // Delay hiding to allow click event on dropdown items
+                                    setTimeout(() => setShowDropdown(false), 200);
+                                }}
+                                placeholder="Search mods (e.g. JEI, Sodium) or paste URL..."
+                                className="w-full bg-slate-900 border border-slate-700 rounded-lg pl-10 pr-4 py-3 text-slate-200 focus:outline-none focus:border-emerald-500 placeholder:text-slate-600 transition-all"
+                                autoComplete="off"
                               />
+                              
+                              {/* Search Dropdown */}
+                              {showDropdown && searchResults.length > 0 && (
+                                  <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-600 rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                                      <div className="p-2 bg-slate-900/50 border-b border-slate-700">
+                                          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-2">Modrinth Results</p>
+                                      </div>
+                                      {searchResults.map((result) => (
+                                          <button
+                                              key={result.slug}
+                                              className="w-full text-left p-3 hover:bg-slate-700 transition-colors flex items-start gap-3 border-b border-slate-700/50 last:border-0"
+                                              onMouseDown={(e) => {
+                                                  e.preventDefault(); // Prevent blur
+                                                  handleAddMod(null, result.slug);
+                                              }}
+                                          >
+                                              {result.icon_url ? (
+                                                  <img src={result.icon_url} className="w-8 h-8 rounded bg-slate-900 object-cover shrink-0" />
+                                              ) : (
+                                                  <div className="w-8 h-8 rounded bg-slate-900 flex items-center justify-center shrink-0">
+                                                      <Icon name="cube" className="w-4 h-4 text-slate-500" />
+                                                  </div>
+                                              )}
+                                              <div className="min-w-0">
+                                                  <div className="flex items-center gap-2">
+                                                      <span className="font-bold text-slate-200 text-sm truncate">{result.title}</span>
+                                                      <span className="text-[10px] bg-slate-900 text-slate-500 px-1.5 rounded">{result.author}</span>
+                                                  </div>
+                                                  <p className="text-xs text-slate-400 line-clamp-1">{result.description}</p>
+                                              </div>
+                                          </button>
+                                      ))}
+                                  </div>
+                              )}
+
                               {error && <div className="absolute -bottom-6 left-0 text-xs text-red-400 flex items-center gap-1"><Icon name="circle-exclamation" className="w-3 h-3" /> {error}</div>}
                             </div>
-                            <Button type="submit" disabled={loading || !modInput} variant={activeTab === 'active' ? 'primary' : 'purple'}>
-                              {loading ? <Icon name="arrows-rotate" className="w-4 h-4 animate-spin" /> : <Icon name="plus" className="w-4 h-4" />} Add
+                            <Button 
+                                onClick={(e) => handleAddMod(e)} 
+                                disabled={loading || !modInput} 
+                                variant={activeTab === 'active' ? 'primary' : 'purple'}
+                                className="px-6"
+                            >
+                              {loading ? <Icon name="arrows-rotate" className="w-4 h-4 animate-spin" /> : <Icon name="plus" className="w-4 h-4" />}
                             </Button>
-                          </form>
+                          </div>
                         </>
                      )}
                   </Card>
@@ -1466,6 +1718,8 @@
                             onAddDependency={handleAddMod}
                             onEditDependency={setEditingDependencyId}
                             onUpdateNote={handleUpdateNote}
+                            currentUser={user}
+                            onVote={handleVote}
                         />
                       ))}
                       {filteredMods.length === 0 && totalMods > 0 && (
