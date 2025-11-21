@@ -40,15 +40,13 @@
     <script type="text/babel">
         // ====================================================================================
         // --- START OF COMBINED APPLICATION LOGIC (ModManager.jsx) ---
-        // This section contains ALL the application logic, functions, and components.
-        // It uses global variables exposed by the CDNs (e.g., React, firebase, etc.)
         // ====================================================================================
 
         const { useState, useEffect, useCallback, useRef, useMemo } = React;
         const MODRINTH_API_BASE = "https://api.modrinth.com/v2";
 
         // ------------------------------------------------------------------
-        // --- FIREBASE SETUP --- (Using global access provided by CDN)
+        // --- FIREBASE SETUP ---
         // ------------------------------------------------------------------
         const manualConfig = {
             apiKey: "AIzaSyAKmyXDM-1YbhWD8rPxszq1o9RxP918bKU",
@@ -62,7 +60,7 @@
 
         const getFirebaseConfig = () => {
             if (manualConfig.apiKey) return manualConfig;
-            // Removed __firebase_config access check for strict GitHub Pages environment
+            // Simplified configuration for GitHub Pages deployment
             return {}; 
         };
 
@@ -73,7 +71,7 @@
         const auth = firebase.auth();
         const db = firebase.firestore();
 
-        const storageAppId = 'default-mod-manager'; // Simplified for deployment
+        const storageAppId = 'default-mod-manager'; 
 
         const MC_VERSIONS = [
             "1.21.10", "1.21.9", "1.21.8", "1.21.7", "1.21.6", "1.21.5", 
@@ -501,11 +499,14 @@
           const [showLibraries, setShowLibraries] = useState(false); // Default HIDDEN
           const [joinCode, setJoinCode] = useState('');
           const [isSyncing, setIsSyncing] = useState(false);
-          const [copyFeedback, setCopyFeedback] = useState(false); 
-          const [ipCopyFeedback, setIpCopyFeedback] = useState(false);
-          const [showScriptModal, setShowScriptModal] = useState(false);
-          const [editingDependencyId, setEditingDependencyId] = useState(null); // STORES ID NOW
-
+          const [copyFeedback, setCopyFeedback] = useState(false); // Used for Invite Link
+          const [ipCopyFeedback, setIpCopyFeedback] = useState(false); // Used for Server IP
+          // FIX: NEW STATES for Admin/User Code copy feedback
+          const [adminCodeCopyFeedback, setAdminCodeCopyFeedback] = useState(false);
+          const [userCodeCopyFeedback, setUserCodeCopyFeedback] = useState(false);
+          // FIX: ADDED MISSING UI STATE VARIABLES
+          const [showScriptModal, setShowScriptModal] = useState(false); 
+          const [editingDependencyId, setEditingDependencyId] = useState(null); 
           // --- Creation State ---
           const [newServerName, setNewServerName] = useState('');
           const [newServerIP, setNewServerIP] = useState('');
@@ -538,38 +539,31 @@
             
             try {
               // Accessing firestore globally
-              const q = db.collection('artifacts').doc(storageAppId).collection('public').doc('data').collection('servers').where('adminCode', '==', code.trim().toUpperCase())
-              .limit(1);
+              const codeUpper = code.trim().toUpperCase();
               
-              const querySnapshot = await q.get();
+              const qAdmin = db.collection('artifacts').doc(storageAppId).collection('public').doc('data').collection('servers').where('adminCode', '==', codeUpper).limit(1);
+              const qUser = db.collection('artifacts').doc(storageAppId).collection('public').doc('data').collection('servers').where('userCode', '==', codeUpper).limit(1);
+              
               let foundDoc = null;
               let role = 'guest';
               let foundCodes = { admin: '', user: '' };
 
-              querySnapshot.forEach((doc) => {
-                const data = doc.data();
-                foundDoc = doc;
-                role = (data.adminCode === code.trim().toUpperCase()) ? 'admin' : 'user';
-                foundCodes = { 
-                    admin: data.adminCode, 
-                    user: data.userCode 
-                };
-              });
-            
-              // If not found as admin, check as user
-              if (!foundDoc) {
-                 const qUser = db.collection('artifacts').doc(storageAppId).collection('public').doc('data').collection('servers').where('userCode', '==', code.trim().toUpperCase())
-                 .limit(1);
-                 
-                 const querySnapshotUser = await qUser.get();
-                 querySnapshotUser.forEach((doc) => {
+              const adminSnapshot = await qAdmin.get();
+              
+              if (!adminSnapshot.empty) {
+                  adminSnapshot.forEach(doc => {
+                    const data = doc.data();
+                    foundDoc = doc;
+                    role = 'admin';
+                    foundCodes = { admin: data.adminCode, user: data.userCode };
+                  });
+              } else {
+                 const userSnapshot = await qUser.get();
+                 userSnapshot.forEach(doc => {
                      const data = doc.data();
                      foundDoc = doc;
                      role = 'user';
-                     foundCodes = { 
-                         admin: 'HIDDEN', 
-                         user: data.userCode 
-                     };
+                     foundCodes = { admin: 'HIDDEN', user: data.userCode };
                  });
               }
 
@@ -579,7 +573,7 @@
                 setAccessLevel(role);
                 setSessionCodes(foundCodes);
                 // SAVE TO LOCAL STORAGE
-                localStorage.setItem('modrinth-server-code', code.trim().toUpperCase());
+                localStorage.setItem('modrinth-server-code', codeUpper);
                 setView('dashboard');
               } else {
                 setError("Invalid Access Code.");
@@ -662,7 +656,6 @@
             
             const adminCode = generateCode('ADM');
             const userCode = generateCode('USR');
-            // Using standard JS crypto.randomUUID for ID generation
             const newDocId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : Math.random().toString(36).substring(2, 15);
 
             try {
@@ -877,6 +870,23 @@
               setTimeout(() => setCopyFeedback(false), 2000);
             }
           };
+          
+          // FIX: New dedicated handlers for Admin/User Code copies
+          const handleCopyAdminCode = () => {
+              const success = copyToClipboard(sessionCodes.admin);
+              if (success) {
+                  setAdminCodeCopyFeedback(true);
+                  setTimeout(() => setAdminCodeCopyFeedback(false), 2000);
+              }
+          };
+
+          const handleCopyUserCode = () => {
+              const success = copyToClipboard(sessionCodes.user);
+              if (success) {
+                  setUserCodeCopyFeedback(true);
+                  setTimeout(() => setUserCodeCopyFeedback(false), 2000);
+              }
+          };
 
           const handleCopyIP = () => {
             if (!serverIP) return;
@@ -1052,7 +1062,7 @@
                        </div>
                        {error && <p className="text-red-400 text-sm text-center flex items-center justify-center gap-2"><Icon name="circle-exclamation" className="w-4 h-4"/> {error}</p>}
                        
-                       <Button onClick={handleManualJoin} className="w-full py-3" disabled={loading || !joinCode}>
+                       <Button type="submit" className="w-full py-3" disabled={loading || !joinCode}>
                          {loading ? 'Connecting...' : 'Join Server'}
                        </Button>
                     </form>
@@ -1187,26 +1197,48 @@
                   </div>
                   
                   <div className="flex items-center gap-4 w-full md:w-auto justify-end">
-                     {/* Admin Info Panel (Only visible to Admin) */}
-                     {accessLevel === 'admin' && (
-                        <div className="hidden md:flex items-center gap-4 mr-4">
-                           <div className="flex items-center gap-2 px-3 py-1 bg-emerald-900/20 border border-emerald-900/50 rounded">
-                              <div className="flex flex-col items-end">
-                                <span className="text-[10px] text-emerald-500 font-bold uppercase leading-none">Admin Code</span>
-                                <span className="text-xs text-emerald-400 font-mono font-bold tracking-wider leading-none mt-1">{sessionCodes.admin}</span>
-                              </div>
-                              <Icon name="copy" className="w-3 h-3 text-emerald-600 cursor-pointer hover:text-emerald-400" onClick={() => copyToClipboard(sessionCodes.admin)} title="Copy Admin Code" />
-                           </div>
-                           
-                           <div className="flex items-center gap-2 px-3 py-1 bg-slate-900/50 border border-slate-800 rounded">
-                              <div className="flex flex-col items-end">
-                                <span className="text-[10px] text-slate-500 font-bold uppercase leading-none">User Code</span>
-                                <span className="text-xs text-slate-300 font-mono font-bold tracking-wider leading-none mt-1">{sessionCodes.user}</span>
-                              </div>
-                              <Icon name="copy" className="w-3 h-3 text-slate-600 cursor-pointer hover:text-white" onClick={() => copyToClipboard(sessionCodes.user)} title="Copy User Code" />
-                           </div>
-                        </div>
-                     )}
+                     
+                     {/* --- Admin/User Codes Display (Visible on mid/desktop screens) --- */}
+                     <div className="hidden md:flex items-center gap-4 mr-4">
+                        {/* 1. Admin Code (Admin Only) */}
+                        {accessLevel === 'admin' && (
+                            <div className="flex items-center gap-2 px-3 py-1 bg-emerald-900/20 border border-emerald-900/50 rounded">
+                                <div className="flex flex-col items-end">
+                                    <span className="text-[10px] text-emerald-500 font-bold uppercase leading-none">Admin Code</span>
+                                    <span className="text-xs text-emerald-400 font-mono font-bold tracking-wider leading-none mt-1">{sessionCodes.admin}</span>
+                                </div>
+                                
+                                {/* FIX: Use button wrapper as provided by user */}
+                                {adminCodeCopyFeedback ? (
+                                    <Icon name="circle-check" className="w-3 h-3 text-emerald-400" title="Copied!" />
+                                ) : (
+                                    <button onClick={handleCopyAdminCode} className="p-0 bg-transparent border-0 cursor-pointer hover:opacity-80">
+                                        <Icon name="copy" className="w-3 h-3 text-emerald-600" title="Copy Admin Code" />
+                                    </button>
+                                )}
+                            </div>
+                        )}
+
+                        {/* 2. User Code (Visible to all connected users) */}
+                        {serverDocId && sessionCodes.user !== '' && (
+                            <div className="flex items-center gap-2 px-3 py-1 bg-slate-900/50 border border-slate-800 rounded">
+                                <div className="flex flex-col items-end">
+                                    <span className="text-[10px] text-slate-500 font-bold uppercase leading-none">User Code</span>
+                                    <span className="text-xs text-slate-300 font-mono font-bold tracking-wider leading-none mt-1">{sessionCodes.user}</span>
+                                </div>
+                                
+                                {/* FIX: Use button wrapper as provided by user */}
+                                {userCodeCopyFeedback ? (
+                                    <Icon name="circle-check" className="w-3 h-3 text-emerald-400" title="Copied!" />
+                                ) : (
+                                    <button onClick={handleCopyUserCode} className="p-0 bg-transparent border-0 cursor-pointer hover:opacity-80">
+                                        <Icon name="copy" className="w-3 h-3 text-slate-600 hover:text-white" title="Copy User Code" />
+                                    </button>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                    {/* --- End Codes Display --- */}
 
                      {/* Version Selectors (Read Only for Users, Edit for Admin) */}
                      <div className="flex flex-col items-end group">
@@ -1440,7 +1472,6 @@
         }
         
         // --- FINAL RENDER CALL ---
-        // This is outside the main component function to render the app.
         ReactDOM.createRoot(document.getElementById('root')).render(
             <React.StrictMode>
                 <ModManager />
