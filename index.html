@@ -134,7 +134,8 @@
             slate: "bg-slate-700 text-slate-300",
             green: "bg-emerald-900/50 text-emerald-400 border border-emerald-800",
             yellow: "bg-amber-900/50 text-amber-400 border border-amber-800",
-            red: "bg-red-900/50 text-red-400 border border-red-800",
+            // Darkened badge background significantly (red-950/80) for contrast against the red card
+            red: "bg-red-950/80 text-red-300 border border-red-900/50", 
             purple: "bg-purple-900/50 text-purple-400 border border-purple-800",
           };
           
@@ -397,8 +398,14 @@
             const hasUpvoted = currentUser && upvotes.includes(currentUser.uid);
             const hasDownvoted = currentUser && downvotes.includes(currentUser.uid);
 
+            // STYLE UPDATE: 
+            // Reduced card background opacity to 50% (bg-red-900/50) for better readability while maintaining the alert status.
+            const cardStatusStyle = mod.target_version_number === 'None Found' 
+                ? 'bg-red-900/50 border-red-500/50' 
+                : 'hover:bg-slate-800/80';
+
             return (
-                <Card className={`p-4 transition-colors ${isCheckingUpdates ? 'opacity-70' : 'opacity-100'} ${mod.target_version_number === 'None Found' ? 'border-red-900/30 bg-red-900/5' : 'hover:bg-slate-800/80'}`}>
+                <Card className={`p-4 transition-colors ${isCheckingUpdates ? 'opacity-70' : 'opacity-100'} ${cardStatusStyle}`}>
                     <div className="flex flex-col md:flex-row md:items-center gap-4 justify-between">
                     
                     {/* Mod Info */}
@@ -413,7 +420,7 @@
                         <div>
                         <div className="flex items-center gap-3 mb-1">
                             <h3 className="font-bold text-lg text-slate-200">{mod.title}</h3>
-                            {mod.target_version_number === 'None Found' ? <Badge color="red">Missing</Badge> : <Badge color="green">Ready</Badge>}
+                            {mod.target_version_number === 'None Found' ? <Badge color="red">Outdated</Badge> : <Badge color="green">Ready</Badge>}
                             <a href={mod.project_url} target="_blank" rel="noreferrer" className="text-slate-500 hover:text-emerald-400 transition-colors"><Icon name="external-link" className="w-4 h-4" /></a>
                         </div>
                         <p className="text-sm text-slate-400 line-clamp-1 max-w-xl">{mod.description}</p>
@@ -737,12 +744,16 @@
 
               const doSearch = async () => {
                   try {
-                      // Filter for specific loader AND ensure it's a mod (not a modpack/resourcepack)
-                      // NEW: Also filter for mods compatible with Server Version OR Target Version
+                      // Facet breakdown:
+                      // 1. Loader: Must match current loader (Fabric)
+                      // 2. Type: Must be a Mod (not modpack)
+                      // 3. Version: Must exist for EITHER current server version OR target version
+                      // 4. Environment: Must be Server Required OR Server Optional (Filters out Client-only mods like Sodium)
                       const facets = JSON.stringify([
                           [`categories:${loader}`], 
                           ["project_type:mod"],
-                          [`versions:${serverVersion}`, `versions:${targetVersion}`]
+                          [`versions:${serverVersion}`, `versions:${targetVersion}`],
+                          ["server_side:required", "server_side:optional"] 
                       ]);
                       
                       const res = await fetch(`${MODRINTH_API_BASE}/search?query=${debouncedSearch}&limit=5&facets=${facets}`);
@@ -867,7 +878,7 @@
 
           // --- Mod Logic ---
 
-          const handleAddMod = async (e, manualInput = null) => {
+          const handleAddMod = async (e, manualInput = null, overrideTab = null) => {
             if(e) e.preventDefault();
             const inputVal = manualInput || modInput;
 
@@ -918,11 +929,13 @@
                 updated_at: new Date().toISOString(),
                 status: latestTarget ? 'ready' : 'missing',
                 note: '',
-                upvotes: [], // New
-                downvotes: [] // New
+                upvotes: [], 
+                downvotes: [] 
               };
 
-              if (activeTab === 'active') {
+              const targetList = overrideTab || activeTab;
+
+              if (targetList === 'active') {
                 await saveToServer([...mods, newMod], null);
               } else {
                 await saveToServer(null, [...wishlist, newMod]);
@@ -935,6 +948,26 @@
               setLoading(false);
             }
           };
+
+          // --- Deep Link Listener (For Future Extension) ---
+          useEffect(() => {
+              if (isSyncing) return; // Wait for initial data load to prevent overwrite risks
+              
+              const params = new URLSearchParams(window.location.search);
+              const modToAdd = params.get('add_to_wishlist');
+              
+              if (modToAdd) {
+                  // Clear the param so it doesn't re-trigger on refresh
+                  const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+                  window.history.replaceState({path: newUrl}, '', newUrl);
+                  
+                  // Force switch to wishlist view for UX
+                  setActiveTab('wishlist');
+                  
+                  // Trigger add with explicit override to 'wishlist' tab
+                  handleAddMod(null, modToAdd, 'wishlist');
+              }
+          }, [isSyncing]); // Depend on sync status
 
           const handleRemoveMod = async (id) => {
             if (activeTab === 'active') {
