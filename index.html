@@ -9,7 +9,17 @@
     <!-- Load React libraries and Babel for JSX conversion -->
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone@7.24.0/babel.min.js"></script>
+
+    <!-- Load Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" xintegrity="sha512-SnH5WK+bZxgPHs44uWIX+LLMD/CDQ7uY2zR41W5z6U9U3k3e5e4X8p13n16j9aE8F1uG1R1/6aU5Q/0A9G/4g==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    
+    <!-- Load Firebase UMD modules (required for global access) -->
+    <!-- NOTE: The order here matters. firebase-app MUST load first. -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js"></script>
+    
     <style>
         /* Ensures the entire page background is dark slate */
         html, body, #root {
@@ -22,24 +32,22 @@
     <div id="root"></div>
 
     <!-- 
-      The type="text/babel" tells the browser to run this script through Babel 
-      before executing it, which allows it to understand the JSX syntax 
-      from your ModManager.jsx component.
+      The code is now wrapped in a self-executing function to ensure all global
+      dependencies (like 'firebase') are loaded before the main logic runs.
     -->
     <script type="text/babel">
-        // --- Paste the full content of ModManager.jsx here ---
+        (function() {
         
-        // This is a placeholder for the actual content of ModManager.jsx
-        // The file is too large to include inline here, but this is where it goes.
-        // You will replace this comment block with the full content of ModManager.jsx
-        
-        // You must paste the full content of ModManager.jsx here, 
-        // including the imports and the default export function.
-        
-        import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-        import { initializeApp } from 'firebase/app';
-        import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
-        import { 
+        // --- Configuration ---
+        const MODRINTH_API_BASE = "https://api.modrinth.com/v2";
+
+        // ------------------------------------------------------------------
+        // --- FIREBASE CONFIGURATION ---
+        // Accessing Firebase methods via global variables
+        // ------------------------------------------------------------------
+        const { initializeApp } = firebase.app;
+        const { getAuth, signInAnonymously, onAuthStateChanged } = firebase.auth;
+        const { 
           getFirestore, 
           doc, 
           setDoc, 
@@ -50,57 +58,9 @@
           where, 
           getDocs,
           updateDoc 
-        } from 'firebase/firestore';
-        import { 
-          RefreshCw, 
-          Trash2, 
-          Plus, 
-          ExternalLink, 
-          AlertCircle, 
-          CheckCircle, 
-          Package, 
-          Download,
-          ChevronDown,
-          AlertTriangle,
-          ArrowRight,
-          Server,
-          Target,
-          Share2,
-          Filter,
-          Upload,
-          Copy,
-          X,
-          Gift,
-          ThumbsUp,
-          ArrowDownToLine,
-          LogOut,
-          Shield,
-          Users,
-          Lock,
-          Wifi,
-          Hash,
-          Globe,
-          Link as LinkIcon,
-          FileText,
-          Terminal,
-          Save,
-          Zap,
-          Link2,
-          Layers,
-          Eye,
-          EyeOff,
-          Edit3,
-          Archive,
-          FolderOpen
-        } from 'lucide-react';
+        } = firebase.firestore;
 
-        // --- Configuration ---
-        const MODRINTH_API_BASE = "https://api.modrinth.com/v2";
 
-        // ------------------------------------------------------------------
-        // --- FIREBASE CONFIGURATION ---
-        // Paste your config object from the Firebase Console below.
-        // ------------------------------------------------------------------
         const manualConfig = {
           apiKey: "AIzaSyAKmyXDM-1YbhWD8rPxszq1o9RxP918bKU",
           authDomain: "modrinth-manager.firebaseapp.com",
@@ -132,6 +92,9 @@
           "1.20.6", "1.20.4", "1.20.2", "1.20.1", 
           "1.19.4", "1.19.2", "1.18.2", "1.16.5"
         ];
+        
+        // --- React Hooks & Components (Accessed via global React) ---
+        const { useState, useEffect, useCallback, useRef, useMemo } = React;
 
         // --- Components ---
 
@@ -253,9 +216,9 @@
               <div className="bg-slate-800 border border-slate-700 rounded-xl w-full max-w-3xl p-6 shadow-2xl">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                    <Terminal className="w-5 h-5 text-emerald-400" /> Server Download Script
+                    <i className="fa-solid fa-terminal fa-fw text-emerald-400"></i> Server Download Script
                   </h3>
-                  <button onClick={onClose} className="text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
+                  <button onClick={onClose} className="text-slate-400 hover:text-white"><i className="fa-solid fa-xmark fa-fw"></i></button>
                 </div>
                 <p className="text-slate-400 text-sm mb-3">
                   Run this in your server's terminal to download all <strong>{uniqueMods.length} Ready</strong> mods. 
@@ -269,7 +232,7 @@
                 <div className="flex justify-end gap-3">
                   <Button variant="secondary" onClick={onClose}>Close</Button>
                   <Button onClick={() => copyToClipboard(script)}>
-                    <Copy className="w-4 h-4" /> Copy Script
+                    <i className="fa-solid fa-copy fa-fw"></i> Copy Script
                   </Button>
                 </div>
               </div>
@@ -297,10 +260,10 @@
           return (
             <div className="mt-3 bg-slate-950 border-l-2 border-yellow-500 rounded-r-md p-2 relative group transition-all hover:bg-slate-900">
                 <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    {saved ? <CheckCircle className="w-3 h-3 text-emerald-500" /> : <Save className="w-3 h-3 text-amber-500 animate-pulse" />}
+                    {saved ? <i className="fa-solid fa-check-circle fa-fw text-emerald-500"></i> : <i className="fa-solid fa-save fa-fw text-amber-500 animate-pulse"></i>}
                 </div>
                 <div className="flex items-start gap-2">
-                    <FileText className="w-3 h-3 text-yellow-500 mt-1 shrink-0" />
+                    <i className="fa-solid fa-file-lines fa-fw text-yellow-500 mt-1 shrink-0"></i>
                     <textarea
                         value={value}
                         onChange={handleChange}
@@ -372,7 +335,7 @@
             return (
                 <div className="mt-4 pt-3 border-t border-slate-700/50">
                     <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1">
-                        <Link2 className="w-3 h-3" /> Dependencies
+                        <i className="fa-solid fa-link fa-fw"></i> Dependencies
                     </h4>
                     <div className="flex flex-wrap gap-2">
                         {resolvedDeps.map((dep, idx) => (
@@ -390,21 +353,21 @@
                                 }`}
                             >
                                 {dep.status === 'installed' ? (
-                                    <CheckCircle className="w-3 h-3" />
+                                    <i className="fa-solid fa-check-circle fa-fw"></i>
                                 ) : (
-                                    <AlertTriangle className="w-3 h-3" />
+                                    <i className="fa-solid fa-triangle-exclamation fa-fw"></i>
                                 )}
                                 
                                 <span className="font-medium">{dep.title}</span>
                                 
                                 {dep.status === 'missing' && dep.slug && (
                                     <span className="ml-1 px-1.5 py-0.5 bg-red-500 text-white rounded text-[10px] font-bold flex items-center gap-0.5">
-                                        <Plus className="w-2 h-2" /> ADD
+                                        <i className="fa-solid fa-plus fa-2xs"></i> ADD
                                     </span>
                                 )}
 
                                 {dep.status === 'installed' && (
-                                     <Edit3 className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                     <i className="fa-solid fa-pen-to-square fa-2xs opacity-0 group-hover:opacity-100 transition-opacity"></i>
                                 )}
                             </button>
                         ))}
@@ -426,7 +389,7 @@
                         <div className="flex items-center gap-3 mb-1">
                             <h3 className="font-bold text-lg text-slate-200">{mod.title}</h3>
                             {mod.target_version_number === 'None Found' ? <Badge color="red">Missing</Badge> : <Badge color="green">Ready</Badge>}
-                            <a href={mod.project_url} target="_blank" rel="noreferrer" className="text-slate-500 hover:text-emerald-400 transition-colors"><ExternalLink className="w-4 h-4" /></a>
+                            <a href={mod.project_url} target="_blank" rel="noreferrer" className="text-slate-500 hover:text-emerald-400 transition-colors"><i className="fa-solid fa-up-right-from-square fa-fw"></i></a>
                         </div>
                         <p className="text-sm text-slate-400 line-clamp-1 max-w-xl">{mod.description}</p>
                         
@@ -453,10 +416,10 @@
                                 : [...new Set(mod.server_candidates)].map(v => <option key={v} value={v}>{v}</option>)
                                 }
                             </select>
-                            {(activeTab !== 'active' || accessLevel === 'admin') && <ChevronDown className="w-3 h-3 text-slate-500 absolute right-2 top-2 pointer-events-none" />}
+                            {(activeTab !== 'active' || accessLevel === 'admin') && <i className="fa-solid fa-chevron-down fa-xs text-slate-500 absolute right-2 top-2 pointer-events-none"></i>}
                             </div>
                         </div>
-                        <ArrowRight className="w-4 h-4 text-slate-600" />
+                        <i className="fa-solid fa-arrow-right fa-fw text-slate-600"></i>
                         {/* Target Version Display (Read Only) */}
                         <div className="flex flex-col items-start min-w-[140px]">
                             <span className="text-[10px] text-emerald-500/70 font-bold uppercase mb-1">Target</span>
@@ -472,12 +435,12 @@
                     <div className="flex items-center gap-2">
                         {/* Approve (Admin + Wishlist only) */}
                         {activeTab === 'wishlist' && accessLevel === 'admin' && (
-                            <button onClick={() => onApprove(mod)} className="p-2 text-emerald-400 bg-emerald-900/20 hover:bg-emerald-900/40 rounded transition-colors"><ThumbsUp className="w-5 h-5" /></button>
+                            <button onClick={() => onApprove(mod)} className="p-2 text-emerald-400 bg-emerald-900/20 hover:bg-emerald-900/40 rounded transition-colors"><i className="fa-solid fa-thumbs-up fa-fw"></i></button>
                         )}
                         
                         {/* Delete (Admin always, User only in Wishlist) */}
                         {(accessLevel === 'admin' || activeTab === 'wishlist') && (
-                            <button onClick={() => onRemove(mod.id)} className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-900/20 rounded transition-colors"><Trash2 className="w-5 h-5" /></button>
+                            <button onClick={() => onRemove(mod.id)} className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-900/20 rounded transition-colors"><i className="fa-solid fa-trash-can fa-fw"></i></button>
                         )}
                     </div>
                     </div>
@@ -497,9 +460,9 @@
             return (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
                      <div className="bg-slate-900 border border-slate-700 rounded-xl w-full max-w-4xl p-6 shadow-2xl relative">
-                         <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-white"><X className="w-6 h-6" /></button>
+                         <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-white"><i className="fa-solid fa-xmark fa-fw"></i></button>
                          <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                             <Layers className="w-5 h-5 text-emerald-500" /> Dependency Manager
+                             <i className="fa-solid fa-layer-group fa-fw text-emerald-500"></i> Dependency Manager
                          </h2>
                          <p className="text-slate-400 text-sm mb-6">
                              You are editing a library mod. This mod is hidden from the main list to keep it clean.
@@ -568,14 +531,16 @@
           useEffect(() => {
             const initAuth = async () => {
               try {
-                await signInAnonymously(auth);
+                // Using signInAnonymously globally
+                await signInAnonymously(auth); 
               } catch (e) {
                 console.error("Authentication Error:", e);
                 setError("Could not sign in. Check console for config errors.");
               }
             };
             initAuth();
-            return onAuthStateChanged(auth, setUser);
+            // Using onAuthStateChanged globally
+            return onAuthStateChanged(auth, setUser); 
           }, []);
 
           // --- CORE JOIN LOGIC (Reusable) ---
@@ -584,6 +549,7 @@
             setLoading(true);
             
             try {
+              // Using firestore global functions
               const q = query(
                 collection(db, 'artifacts', storageAppId, 'public', 'data', 'servers')
               );
@@ -646,6 +612,7 @@
           useEffect(() => {
             if (!user || !serverDocId) return;
 
+            // Using firestore global functions
             const docRef = doc(db, 'artifacts', storageAppId, 'public', 'data', 'servers', serverDocId);
             
             setIsSyncing(true);
@@ -697,6 +664,7 @@
             const newDocId = crypto.randomUUID();
 
             try {
+              // Using firestore global functions
               const docRef = doc(db, 'artifacts', storageAppId, 'public', 'data', 'servers', newDocId);
               await setDoc(docRef, {
                 createdAt: new Date().toISOString(),
@@ -746,6 +714,7 @@
 
           const saveToServer = async (newMods, newWishlist) => {
             if (!serverDocId) return;
+            // Using firestore global functions
             const docRef = doc(db, 'artifacts', storageAppId, 'public', 'data', 'servers', serverDocId);
             await updateDoc(docRef, {
               mods: newMods || mods,
@@ -756,6 +725,7 @@
           
           const saveVersions = async (sVer, tVer) => {
               if (!serverDocId || accessLevel !== 'admin') return;
+              // Using firestore global functions
               const docRef = doc(db, 'artifacts', storageAppId, 'public', 'data', 'servers', serverDocId);
               await updateDoc(docRef, {
                   serverVersion: sVer,
@@ -1074,7 +1044,7 @@
                 <div className="max-w-md w-full space-y-8">
                   <div className="text-center">
                     <div className="inline-flex p-4 bg-emerald-600 rounded-2xl shadow-2xl shadow-emerald-900/50 mb-4">
-                       <Package className="w-12 h-12 text-white" />
+                       <i className="fa-solid fa-cube fa-2x text-white"></i>
                     </div>
                     <h1 className="text-3xl font-bold text-white tracking-tight mb-2">Fabric Mod Manager</h1>
                     <p className="text-slate-400">Sync your server modpack with friends in real-time.</p>
@@ -1092,7 +1062,7 @@
                            className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-center font-mono text-lg tracking-widest text-white focus:border-emerald-500 focus:outline-none uppercase"
                          />
                        </div>
-                       {error && <p className="text-red-400 text-sm text-center flex items-center justify-center gap-2"><AlertCircle className="w-4 h-4"/> {error}</p>}
+                       {error && <p className="text-red-400 text-sm text-center flex items-center justify-center gap-2"><i className="fa-solid fa-circle-exclamation fa-fw"></i> {error}</p>}
                        
                        <Button onClick={handleManualJoin} className="w-full py-3" disabled={loading || !joinCode}>
                          {loading ? 'Connecting...' : 'Join Server'}
@@ -1105,7 +1075,7 @@
                     </div>
 
                     <Button variant="outline" onClick={() => setView('create')} className="w-full py-3 border-dashed text-slate-400 hover:text-white hover:border-emerald-500/50">
-                       <Plus className="w-4 h-4" /> Create New Server
+                       <i className="fa-solid fa-plus fa-fw"></i> Create New Server
                     </Button>
                   </div>
                 </div>
@@ -1128,7 +1098,7 @@
                   </div>
 
                   <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-xl relative">
-                     <button onClick={() => setView('login')} className="absolute top-4 right-4 text-slate-500 hover:text-white"><X className="w-5 h-5"/></button>
+                     <button onClick={() => setView('login')} className="absolute top-4 right-4 text-slate-500 hover:text-white"><i className="fa-solid fa-xmark fa-fw"></i></button>
                      
                      <form onSubmit={handleCreateServer} className="space-y-4">
                         <div>
@@ -1146,7 +1116,7 @@
                            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Server IP (Optional)</label>
                            <div className="flex items-center gap-2">
                               <div className="bg-slate-950 px-3 py-3 rounded-l-lg border border-slate-800 border-r-0 text-slate-500">
-                                 <Globe className="w-4 h-4" />
+                                 <i className="fa-solid fa-globe fa-fw"></i>
                               </div>
                               <input 
                                 type="text" 
@@ -1158,7 +1128,7 @@
                            </div>
                         </div>
 
-                        {error && <p className="text-red-400 text-sm text-center flex items-center justify-center gap-2"><AlertCircle className="w-4 h-4"/> {error}</p>}
+                        {error && <p className="text-red-400 text-sm text-center flex items-center justify-center gap-2"><i className="fa-solid fa-circle-exclamation fa-fw"></i> {error}</p>}
 
                         <Button onClick={handleCreateServer} className="w-full py-3 mt-4" disabled={loading || !newServerName}>
                            {loading ? 'Creating...' : 'Create Server'}
@@ -1220,20 +1190,20 @@
                 <div className="max-w-6xl mx-auto px-6 py-4 flex flex-col md:flex-row items-center justify-between gap-4">
                   <div className="flex items-center gap-4 w-full md:w-auto">
                     <button onClick={handleLogout} className="p-2 hover:bg-slate-800 rounded-lg transition-colors" title="Logout & Clear Session">
-                       <LogOut className="w-5 h-5 text-slate-500" />
+                       <i className="fa-solid fa-sign-out-alt fa-fw text-slate-500"></i>
                     </button>
                     <div>
                       <div className="flex flex-col">
                         <div className="flex items-center gap-2">
                           <h1 className="text-xl font-bold text-white tracking-tight">{serverName}</h1>
-                          {isSyncing ? <Wifi className="w-3 h-3 text-emerald-500 animate-pulse" /> : <div className="w-2 h-2 rounded-full bg-slate-700" />}
+                          {isSyncing ? <i className="fa-solid fa-wifi fa-fw text-emerald-500 animate-pulse"></i> : <div className="w-2 h-2 rounded-full bg-slate-700" />}
                         </div>
                         {/* IP Display */}
                         {serverIP && (
                            <div className="flex items-center gap-2 mt-0.5 group cursor-pointer" onClick={handleCopyIP}>
-                              <Globe className="w-3 h-3 text-slate-500" />
+                              <i className="fa-solid fa-globe fa-fw text-slate-500"></i>
                               <span className="text-xs font-mono text-slate-400 group-hover:text-emerald-400 transition-colors">{serverIP}</span>
-                              {ipCopyFeedback ? <CheckCircle className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3 text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity" />}
+                              {ipCopyFeedback ? <i className="fa-solid fa-check-circle fa-fw text-emerald-500"></i> : <i className="fa-solid fa-copy fa-fw text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity"></i>}
                            </div>
                         )}
                       </div>
@@ -1249,7 +1219,7 @@
                                 <span className="text-[10px] text-emerald-500 font-bold uppercase leading-none">Admin Code</span>
                                 <span className="text-xs text-emerald-400 font-mono font-bold tracking-wider leading-none mt-1">{sessionCodes.admin}</span>
                               </div>
-                              <Copy className="w-3 h-3 text-emerald-600 cursor-pointer hover:text-emerald-400" onClick={() => copyToClipboard(sessionCodes.admin)} title="Copy Admin Code" />
+                              <i className="fa-solid fa-copy fa-fw text-emerald-600 cursor-pointer hover:text-emerald-400" onClick={() => copyToClipboard(sessionCodes.admin)} title="Copy Admin Code" ></i>
                            </div>
                            
                            <div className="flex items-center gap-2 px-3 py-1 bg-slate-900/50 border border-slate-800 rounded">
@@ -1257,7 +1227,7 @@
                                 <span className="text-[10px] text-slate-500 font-bold uppercase leading-none">User Code</span>
                                 <span className="text-xs text-slate-300 font-mono font-bold tracking-wider leading-none mt-1">{sessionCodes.user}</span>
                               </div>
-                              <Copy className="w-3 h-3 text-slate-600 cursor-pointer hover:text-white" onClick={() => copyToClipboard(sessionCodes.user)} title="Copy User Code" />
+                              <i className="fa-solid fa-copy fa-fw text-slate-600 cursor-pointer hover:text-white" onClick={() => copyToClipboard(sessionCodes.user)} title="Copy User Code" ></i>
                            </div>
                         </div>
                      )}
@@ -1274,11 +1244,11 @@
                           >
                             {MC_VERSIONS.map(v => <option key={v} value={v}>{v}</option>)}
                           </select>
-                          {accessLevel === 'admin' && <ChevronDown className="w-4 h-4 text-slate-500 absolute right-2 top-2 pointer-events-none" />}
+                          {accessLevel === 'admin' && <i className="fa-solid fa-chevron-down fa-xs text-slate-500 absolute right-2 top-2 pointer-events-none"></i>}
                         </div>
                      </div>
 
-                    <ArrowRight className="w-5 h-5 text-slate-600 mt-5 hidden md:block" />
+                    <i className="fa-solid fa-arrow-right fa-fw text-slate-600 mt-5 hidden md:block"></i>
 
                      <div className="flex flex-col items-end group">
                         <label className="text-[10px] uppercase tracking-widest text-emerald-500 font-bold">Target</label>
@@ -1291,7 +1261,7 @@
                           >
                             {MC_VERSIONS.map(v => <option key={v} value={v}>{v}</option>)}
                           </select>
-                          {accessLevel === 'admin' && <ChevronDown className="w-4 h-4 text-emerald-500 absolute right-2 top-2 pointer-events-none" />}
+                          {accessLevel === 'admin' && <i className="fa-solid fa-chevron-down fa-xs text-emerald-500 absolute right-2 top-2 pointer-events-none"></i>}
                         </div>
                      </div>
                   </div>
@@ -1325,7 +1295,7 @@
                      <div className="flex flex-col md:flex-row justify-between items-end md:items-center mb-4 gap-4">
                        <div>
                          <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                           <Target className="w-5 h-5 text-emerald-400" />
+                           <i className="fa-solid fa-bullseye fa-fw text-emerald-400"></i>
                            Migration Target: <span className="font-mono text-emerald-400">{targetVersion}</span>
                          </h2>
                          <p className="text-slate-400 text-sm mt-1">
@@ -1351,14 +1321,14 @@
                      {/* Disable Add to Server if User, Allow Add to Wishlist always */}
                      {(activeTab === 'active' && accessLevel === 'user') ? (
                          <div className="h-full flex flex-col items-center justify-center text-slate-500 py-4">
-                            <Lock className="w-8 h-8 mb-2 opacity-50" />
+                            <i className="fa-solid fa-lock fa-fw fa-2x mb-2 opacity-50"></i>
                             <p className="text-sm">Only Admins can add directly to Server List.</p>
                             <p className="text-xs">Switch to Wishlist to make a request.</p>
                          </div>
                      ) : (
                         <>
                           <h2 className={`text-sm font-bold uppercase tracking-wider mb-4 flex items-center gap-2 ${activeTab === 'active' ? 'text-emerald-400' : 'text-purple-400'}`}>
-                            <Plus className="w-4 h-4" /> Add to {activeTab === 'active' ? 'Server' : 'Wishlist'}
+                            <i className="fa-solid fa-plus fa-fw"></i> Add to {activeTab === 'active' ? 'Server' : 'Wishlist'}
                           </h2>
                           <form onSubmit={handleAddMod} className="flex gap-3">
                             <div className="flex-1 relative">
@@ -1369,10 +1339,10 @@
                                 placeholder="Paste Modrinth URL or Enter Slug"
                                 className="w-full bg-slate-900 border border-slate-700 rounded px-4 py-3 text-slate-200 focus:outline-none focus:border-emerald-500 placeholder:text-slate-600"
                               />
-                              {error && <div className="absolute -bottom-6 left-0 text-xs text-red-400 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {error}</div>}
+                              {error && <div className="absolute -bottom-6 left-0 text-xs text-red-400 flex items-center gap-1"><i className="fa-solid fa-circle-exclamation fa-fw"></i> {error}</div>}
                             </div>
                             <Button type="submit" disabled={loading || !modInput} variant={activeTab === 'active' ? 'primary' : 'purple'}>
-                              {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />} Add
+                              {loading ? <i className="fa-solid fa-redo-alt fa-fw animate-spin"></i> : <i className="fa-solid fa-plus fa-fw"></i>} Add
                             </Button>
                           </form>
                         </>
@@ -1385,26 +1355,26 @@
                        <h2 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-2">Actions</h2>
                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                           <Button variant="outline" onClick={handleCopyInviteLink} className="text-xs py-2">
-                            {copyFeedback ? <CheckCircle className="w-3 h-3 text-emerald-400" /> : <LinkIcon className="w-3 h-3" />}
+                            {copyFeedback ? <i className="fa-solid fa-check-circle fa-fw text-emerald-400"></i> : <i className="fa-solid fa-link fa-fw"></i>}
                             {copyFeedback ? 'Copied Link!' : 'Copy Invite Link'}
                           </Button>
                           
                           {/* Admin Only Download Script */}
                           {accessLevel === 'admin' && activeTab === 'active' && (
                              <Button variant="outline" onClick={() => setShowScriptModal(true)} className="text-xs py-2">
-                                 <Terminal className="w-3 h-3" /> Get Download Script
+                                 <i className="fa-solid fa-terminal fa-fw"></i> Get Download Script
                              </Button>
                           )}
                           
                           {/* Export (Available to ALL users) */}
                           <Button variant="outline" onClick={handleExportBackup} className="text-xs py-2">
-                              <Archive className="w-3 h-3" /> Export Backup
+                              <i className="fa-solid fa-box-archive fa-fw"></i> Export Backup
                           </Button>
                           
                           {/* Import (Available only to ADMIN) */}
                           {accessLevel === 'admin' && (
                            <Button variant="outline" onClick={triggerImport} className="text-xs py-2">
-                               <FolderOpen className="w-3 h-3" /> Import Backup
+                               <i className="fa-solid fa-folder-open fa-fw"></i> Import Backup
                                <input 
                                     type="file" 
                                     ref={fileInputRef} 
@@ -1423,7 +1393,7 @@
                        </div>
                      </div>
                      <Button variant="secondary" onClick={() => checkAllUpdates(activeTab === 'active' ? mods : wishlist, activeTab)} disabled={checkingUpdates || totalMods === 0} className="w-full mt-auto">
-                       <RefreshCw className={`w-4 h-4 ${checkingUpdates ? 'animate-spin' : ''}`} />
+                       {checkingUpdates ? <i className="fa-solid fa-redo-alt fa-fw animate-spin"></i> : <i className="fa-solid fa-redo-alt fa-fw"></i>}
                        {checkingUpdates ? 'Checking...' : 'Force Refresh'}
                      </Button>
                   </Card>
@@ -1450,7 +1420,7 @@
                             onClick={() => setShowLibraries(!showLibraries)} 
                             className="flex items-center gap-2 text-xs font-medium text-slate-500 hover:text-white transition-colors px-3 py-1 rounded-md hover:bg-slate-800"
                         >
-                            {showLibraries ? <Eye className="w-3 h-3 text-emerald-500" /> : <EyeOff className="w-3 h-3" />}
+                            {showLibraries ? <i className="fa-solid fa-eye-slash fa-fw text-emerald-500"></i> : <i className="fa-solid fa-eye fa-fw"></i>}
                             {showLibraries ? 'Hide Libraries' : 'Show Libraries'}
                         </button>
                     )}
@@ -1458,7 +1428,7 @@
 
                   {totalMods === 0 ? (
                      <div className="text-center py-20 bg-slate-800/50 rounded-xl border border-dashed border-slate-700">
-                       <Package className="w-12 h-12 text-slate-600 mx-auto mb-4" />
+                       <i className="fa-solid fa-cube fa-fw fa-2x text-slate-600 mx-auto mb-4"></i>
                        <h3 className="text-slate-300 font-medium">List is empty</h3>
                      </div>
                   ) : (
@@ -1494,7 +1464,10 @@
         }
         
         // --- Render the App ---
+        // Ensure this is called once the DOM is ready
         ReactDOM.createRoot(document.getElementById('root')).render(<ModManager />);
+
+        })(); // Self-executing function wrapper ends here
 
     </script>
 </body>
