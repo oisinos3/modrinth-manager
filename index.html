@@ -189,6 +189,7 @@
 
         const ScriptModal = ({ isOpen, onClose, mods, targetVersion }) => {
           const [scriptType, setScriptType] = useState('bash'); 
+          const [copied, setCopied] = useState(false); // New state for feedback
 
           // NEW: Auto-detect Windows to set correct default
           useEffect(() => {
@@ -237,6 +238,14 @@
 
           script += `\n${scriptType === 'bash' ? 'echo' : 'Write-Host'} "Download complete! ${uniqueMods.length} mods processed."`;
 
+          const handleCopy = () => {
+              const success = copyToClipboard(script);
+              if (success) {
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 2000);
+              }
+          };
+
           return (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
               <div className="bg-slate-800 border border-slate-700 rounded-xl w-full max-w-3xl p-6 shadow-2xl">
@@ -264,7 +273,7 @@
                 </div>
 
                 <p className="text-slate-400 text-sm mb-3">
-                  Run this in your <strong>{scriptType === 'bash' ? 'Terminal' : 'PowerShell'}</strong> (not the Minecraft Console) to download all <strong>{uniqueMods.length} Ready</strong> mods. 
+                  Run this in your <strong>{scriptType === 'bash' ? 'Terminal' : 'PowerShell'}</strong> to download all <strong>{uniqueMods.length} Ready</strong> mods. 
                   <br/><span className="text-amber-400 text-xs">Note: Ensure you are in your server's root folder before running.</span>
                 </p>
                 <div className="bg-slate-950 border border-slate-700 rounded p-3 mb-4 relative group overflow-hidden">
@@ -274,8 +283,9 @@
                 </div>
                 <div className="flex justify-end gap-3">
                   <Button variant="secondary" onClick={onClose}>Close</Button>
-                  <Button onClick={() => copyToClipboard(script)}>
-                    <Icon name="copy" className="w-4 h-4" /> Copy Script
+                  <Button onClick={handleCopy} className={copied ? "bg-emerald-600 hover:bg-emerald-500 border-emerald-500" : ""}>
+                    {copied ? <Icon name="check" className="w-4 h-4" /> : <Icon name="copy" className="w-4 h-4" />} 
+                    {copied ? "Copied!" : "Copy Script"}
                   </Button>
                 </div>
               </div>
