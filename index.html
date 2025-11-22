@@ -208,31 +208,53 @@
           if (scriptType === 'bash') {
               script += `#!/bin/bash\n# Auto-generated Mod Migration Script for ${targetVersion}\n`;
               script += `# Contains ${uniqueMods.length} unique mods\n\n`;
-              script += `mkdir -p mods\ncd mods\n\n`;
+              
+              // SMART FOLDER DETECTION (Bash)
+              script += `# Check if we are already in a 'mods' folder\n`;
+              script += `if [[ $(basename "$PWD") != "mods" ]]; then\n`;
+              script += `  mkdir -p mods\n`;
+              script += `  cd mods\n`;
+              script += `fi\n\n`;
               
               uniqueMods.forEach(mod => {
                 const url = mod.primary_file_url || mod.target_file_url;
                 const filename = `${mod.slug}-${mod.target_version_number}.jar`;
                 
-                script += `echo "Downloading ${mod.title}..."\n`;
-                script += `wget -nc -O "${filename}" "${url}"\n`; 
+                // SMART UPDATE LOGIC (Bash)
+                script += `# ${mod.title}\n`;
+                script += `if [ ! -f "${filename}" ]; then\n`;
+                script += `  echo "Updating ${mod.title}..."\n`;
+                script += `  rm -f "${mod.slug}"-*.jar\n`; 
+                script += `  wget -q --show-progress -O "${filename}" "${url}"\n`; 
+                script += `else\n`;
+                script += `  echo "Skipping ${mod.title} (Already up to date)"\n`;
+                script += `fi\n\n`;
               });
           } else {
               // PowerShell Script
               script += `# Auto-generated Mod Migration Script for ${targetVersion}\n`;
               script += `# Contains ${uniqueMods.length} unique mods\n\n`;
-              script += `New-Item -ItemType Directory -Force -Path mods | Out-Null\n`;
-              script += `Set-Location mods\n\n`;
+              
+              // SMART FOLDER DETECTION (PowerShell)
+              script += `# Check if we are already in a 'mods' folder\n`;
+              script += `if ((Get-Item .).Name -ne 'mods') {\n`;
+              script += `    New-Item -ItemType Directory -Force -Path mods | Out-Null\n`;
+              script += `    Set-Location mods\n`;
+              script += `}\n\n`;
               
               uniqueMods.forEach(mod => {
                 const url = mod.primary_file_url || mod.target_file_url;
                 const filename = `${mod.slug}-${mod.target_version_number}.jar`;
                 
-                script += `Write-Host "Downloading ${mod.title}..."\n`;
-                // PowerShell check if file exists equivalent to wget -nc
+                // SMART UPDATE LOGIC (PowerShell)
+                script += `# ${mod.title}\n`;
                 script += `if (-not (Test-Path "${filename}")) {\n`;
+                script += `    Write-Host "Updating ${mod.title}..."\n`;
+                script += `    Remove-Item "${mod.slug}-*.jar" -ErrorAction SilentlyContinue\n`;
                 script += `    Invoke-WebRequest -Uri "${url}" -OutFile "${filename}"\n`;
-                script += `}\n`;
+                script += `} else {\n`;
+                script += `    Write-Host "Skipping ${mod.title} (Already up to date)"\n`;
+                script += `}\n\n`;
               });
           }
 
