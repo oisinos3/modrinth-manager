@@ -183,9 +183,13 @@
         
         // --- Sub-Components ---
 
-        const ScriptModal = ({ isOpen, onClose, mods, targetVersion }) => {
+        const ScriptModal = ({ isOpen, onClose, mods, targetVersion, syncedVersion }) => {
           const [scriptType, setScriptType] = useState('bash'); 
           const [copied, setCopied] = useState(false);
+
+          // Use syncedVersion for the script header if available, otherwise target
+          const effectiveVersion = syncedVersion || targetVersion;
+          const isMismatch = syncedVersion && targetVersion && syncedVersion !== targetVersion;
 
           useEffect(() => {
              if (typeof navigator !== 'undefined' && navigator.userAgent.indexOf("Win") !== -1) {
@@ -201,7 +205,7 @@
           let script = "";
 
           if (scriptType === 'bash') {
-              script += `#!/bin/bash\n# Auto-generated Mod Migration Script for ${targetVersion}\n`;
+              script += `#!/bin/bash\n# Auto-generated Mod Migration Script for ${effectiveVersion}\n`;
               script += `# Contains ${uniqueMods.length} unique mods\n\n`;
               
               script += `# Check if we are already in a 'mods' folder\n`;
@@ -224,7 +228,7 @@
                 script += `fi\n\n`;
               });
           } else {
-              script += `# Auto-generated Mod Migration Script for ${targetVersion}\n`;
+              script += `# Auto-generated Mod Migration Script for ${effectiveVersion}\n`;
               script += `# Contains ${uniqueMods.length} unique mods\n\n`;
               
               script += `# Check if we are already in a 'mods' folder\n`;
@@ -262,9 +266,16 @@
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
               <div className="bg-slate-800 border border-slate-700 rounded-xl w-full max-w-3xl p-6 shadow-2xl">
                 <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                    <Icon name="terminal" className="w-5 h-5 text-emerald-400" /> Server Download Script
-                  </h3>
+                  <div>
+                      <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                        <Icon name="terminal" className="w-5 h-5 text-emerald-400" /> Server Download Script
+                      </h3>
+                      {isMismatch && (
+                          <p className="text-xs text-amber-400 flex items-center gap-1 mt-1">
+                              <Icon name="triangle-exclamation" className="w-3 h-3" /> Warning: Mods are synced to <strong>{syncedVersion}</strong>, but target is <strong>{targetVersion}</strong>.
+                          </p>
+                      )}
+                  </div>
                   <button onClick={onClose} className="text-slate-400 hover:text-white"><Icon name="x" className="w-5 h-5" /></button>
                 </div>
                 
@@ -613,6 +624,9 @@
 
           const [serverVersion, setServerVersion] = useState('1.21.8');
           const [targetVersion, setTargetVersion] = useState('1.21.10');
+          // NEW: Track what version the current list is actually synced to
+          const [syncedVersion, setSyncedVersion] = useState(null);
+          
           const [loader, setLoader] = useState('fabric');
           const [activeTab, setActiveTab] = useState('active'); 
 
@@ -746,6 +760,8 @@
                 setTargetVersion(data.targetVersion || '1.21.10');
                 setServerName(data.serverName || 'My Server');
                 setServerIP(data.serverIP || '');
+                // Load synced version from DB, fallback to serverVersion for legacy data
+                setSyncedVersion(data.syncedVersion || data.serverVersion || '1.21.8');
                 setIsSyncing(false);
               } else {
                 setError("Server deleted or unavailable.");
@@ -823,6 +839,7 @@
                 userCode,
                 serverVersion: '1.21.8',
                 targetVersion: '1.21.10',
+                syncedVersion: '1.21.10', // Default initial sync to target
                 mods: [],
                 wishlist: []
               });
@@ -862,14 +879,23 @@
               setJoinCode('');
           };
 
-          const saveToServer = async (newMods, newWishlist) => {
+          // Updated saveToServer to accept optional syncedVersion override
+          const saveToServer = async (newMods, newWishlist, newSyncedVersion = null) => {
             if (!serverDocId) return;
             const docRef = db.collection('artifacts').doc(storageAppId).collection('public').doc('data').collection('servers').doc(serverDocId);
-            await docRef.update({
-              mods: newMods || mods,
-              wishlist: newWishlist || wishlist,
-              lastUpdated: new Date().toISOString()
-            });
+            
+            const updateData = {
+                mods: newMods || mods,
+                wishlist: newWishlist || wishlist,
+                lastUpdated: new Date().toISOString()
+            };
+            
+            // Only update syncedVersion if explicitly provided (during Check Updates)
+            if (newSyncedVersion) {
+                updateData.syncedVersion = newSyncedVersion;
+            }
+            
+            await docRef.update(updateData);
           };
           
           const saveVersions = async (sVer, tVer) => {
@@ -1245,10 +1271,14 @@
                     if (index !== -1) workingList[index] = updatedItem;
                 });
 
-                if (tab === 'active') await saveToServer(workingList, null);
+                // When finishing the last batch for the active list, update the syncedVersion
+                const isLastBatch = i + BATCH_SIZE >= listToUpdate.length;
+                const newSyncedVersion = (tab === 'active' && isLastBatch) ? targetVersion : null;
+
+                if (tab === 'active') await saveToServer(workingList, null, newSyncedVersion);
                 else await saveToServer(null, workingList);
 
-                if (i + BATCH_SIZE < listToUpdate.length) {
+                if (!isLastBatch) {
                     await delay(DELAY_MS);
                 }
             }
@@ -1274,6 +1304,8 @@
               ? (activeTab === 'active' ? mods : wishlist).find(m => m.id === editingDependencyId)
               : null;
 
+          // Logic to determine visual warning state
+          const isSyncMismatch = activeTab === 'active' && syncedVersion && targetVersion && syncedVersion !== targetVersion;
 
           if (view === 'login') {
             return (
@@ -1393,7 +1425,13 @@
 
           return (
             <div className="min-h-screen bg-slate-900 text-slate-100 font-sans selection:bg-emerald-500/30 pb-20">
-              <ScriptModal isOpen={showScriptModal} onClose={() => setShowScriptModal(false)} mods={mods} targetVersion={targetVersion} />
+              <ScriptModal 
+                  isOpen={showScriptModal} 
+                  onClose={() => setShowScriptModal(false)} 
+                  mods={mods} 
+                  targetVersion={targetVersion}
+                  syncedVersion={syncedVersion} 
+              />
               
               <DependencyModal 
                   mod={activeEditingMod} 
@@ -1563,17 +1601,26 @@
                 </div>
 
                 {totalMods > 0 && activeTab === 'active' && (
-                  <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 shadow-lg relative overflow-hidden">
+                  <div className={`border rounded-xl p-6 shadow-lg relative overflow-hidden transition-colors duration-300 ${isSyncMismatch ? 'bg-slate-800/50 border-amber-500/50' : 'bg-slate-800 border-slate-700'}`}>
                      <div className="flex flex-col md:flex-row justify-between items-end md:items-center mb-4 gap-4">
                        <div>
                          <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                           <Icon name="bullseye" className="w-5 h-5 text-emerald-400" />
-                           Migration Target: <span className="font-mono text-emerald-400">{targetVersion}</span>
+                           {isSyncMismatch ? (
+                                <Icon name="triangle-exclamation" className="w-5 h-5 text-amber-500 animate-pulse" />
+                           ) : (
+                                <Icon name="bullseye" className="w-5 h-5 text-emerald-400" />
+                           )}
+                           Migration Target: <span className={`font-mono ${isSyncMismatch ? 'text-amber-400' : 'text-emerald-400'}`}>{targetVersion}</span>
                          </h2>
-                         <p className="text-slate-400 text-sm mt-1">
-                           {readyMods === totalMods 
-                             ? "All mods are ready for the target version." 
-                             : `Waiting on ${totalMods - readyMods} mods.`}
+                         
+                         <p className="text-slate-400 text-sm mt-1 flex items-center gap-2">
+                           {isSyncMismatch ? (
+                               <span className="text-amber-400 font-bold">
+                                   ⚠️ Mismatch! List synced to {syncedVersion}. Click Refresh to sync.
+                               </span>
+                           ) : (
+                               <span>Last Synced: <span className="font-mono text-emerald-400/70">{syncedVersion}</span></span>
+                           )}
                          </p>
                        </div>
                        <div className="text-right">
@@ -1710,9 +1757,15 @@
                            )}
                        </div>
                      </div>
-                     <Button variant="secondary" onClick={() => checkAllUpdates(activeTab === 'active' ? mods : wishlist, activeTab)} disabled={checkingUpdates || totalMods === 0} className="w-full mt-auto">
+                     <Button 
+                        variant={isSyncMismatch ? 'primary' : 'secondary'} 
+                        onClick={() => checkAllUpdates(activeTab === 'active' ? mods : wishlist, activeTab)} 
+                        disabled={checkingUpdates || totalMods === 0} 
+                        className="w-full mt-auto relative overflow-hidden"
+                     >
+                       {isSyncMismatch && <div className="absolute inset-0 bg-amber-500/20 animate-pulse pointer-events-none"></div>}
                        <Icon name="arrows-rotate" className={`w-4 h-4 ${checkingUpdates ? 'animate-spin' : ''}`} />
-                       {checkingUpdates ? 'Checking...' : 'Force Refresh'}
+                       {checkingUpdates ? 'Checking...' : isSyncMismatch ? `Force Refresh to ${targetVersion}` : 'Force Refresh'}
                      </Button>
                   </Card>
                 </div>
