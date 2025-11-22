@@ -74,7 +74,6 @@
 
         const getFirebaseConfig = () => {
             if (manualConfig.apiKey) return manualConfig;
-            // Simplified configuration for GitHub Pages deployment
             return {}; 
         };
 
@@ -134,7 +133,6 @@
             slate: "bg-slate-700 text-slate-300",
             green: "bg-emerald-900/50 text-emerald-400 border border-emerald-800",
             yellow: "bg-amber-900/50 text-amber-400 border border-amber-800",
-            // Darkened badge background significantly (red-950/80) for contrast against the red card
             red: "bg-red-950/80 text-red-300 border border-red-900/50", 
             purple: "bg-purple-900/50 text-purple-400 border border-purple-800",
           };
@@ -155,7 +153,6 @@
           return `${prefix}-${result}`; // e.g. ADM-X92Z
         };
 
-        // Robust Copy Function
         const copyToClipboard = (text) => {
           const textArea = document.createElement("textarea");
           textArea.value = text;
@@ -175,7 +172,6 @@
           }
         };
 
-        // Helper to resolve dependency ID to Title
         const resolveDependencyName = async (depId) => {
             try {
                 const response = await fetch(`${MODRINTH_API_BASE}/project/${depId}`);
@@ -189,9 +185,8 @@
 
         const ScriptModal = ({ isOpen, onClose, mods, targetVersion }) => {
           const [scriptType, setScriptType] = useState('bash'); 
-          const [copied, setCopied] = useState(false); // New state for feedback
+          const [copied, setCopied] = useState(false);
 
-          // NEW: Auto-detect Windows to set correct default
           useEffect(() => {
              if (typeof navigator !== 'undefined' && navigator.userAgent.indexOf("Win") !== -1) {
                  setScriptType('powershell');
@@ -209,7 +204,6 @@
               script += `#!/bin/bash\n# Auto-generated Mod Migration Script for ${targetVersion}\n`;
               script += `# Contains ${uniqueMods.length} unique mods\n\n`;
               
-              // SMART FOLDER DETECTION (Bash)
               script += `# Check if we are already in a 'mods' folder\n`;
               script += `if [[ $(basename "$PWD") != "mods" ]]; then\n`;
               script += `  mkdir -p mods\n`;
@@ -220,7 +214,6 @@
                 const url = mod.primary_file_url || mod.target_file_url;
                 const filename = `${mod.slug}-${mod.target_version_number}.jar`;
                 
-                // SMART UPDATE LOGIC (Bash)
                 script += `# ${mod.title}\n`;
                 script += `if [ ! -f "${filename}" ]; then\n`;
                 script += `  echo "Updating ${mod.title}..."\n`;
@@ -231,11 +224,9 @@
                 script += `fi\n\n`;
               });
           } else {
-              // PowerShell Script
               script += `# Auto-generated Mod Migration Script for ${targetVersion}\n`;
               script += `# Contains ${uniqueMods.length} unique mods\n\n`;
               
-              // SMART FOLDER DETECTION (PowerShell)
               script += `# Check if we are already in a 'mods' folder\n`;
               script += `if ((Get-Item .).Name -ne 'mods') {\n`;
               script += `    New-Item -ItemType Directory -Force -Path mods | Out-Null\n`;
@@ -246,7 +237,6 @@
                 const url = mod.primary_file_url || mod.target_file_url;
                 const filename = `${mod.slug}-${mod.target_version_number}.jar`;
                 
-                // SMART UPDATE LOGIC (PowerShell)
                 script += `# ${mod.title}\n`;
                 script += `if (-not (Test-Path "${filename}")) {\n`;
                 script += `    Write-Host "Updating ${mod.title}..."\n`;
@@ -278,7 +268,6 @@
                   <button onClick={onClose} className="text-slate-400 hover:text-white"><Icon name="x" className="w-5 h-5" /></button>
                 </div>
                 
-                {/* Script Type Toggle */}
                 <div className="flex gap-2 mb-4 p-1 bg-slate-900/50 rounded-lg border border-slate-700 w-fit">
                     <button 
                         onClick={() => setScriptType('bash')}
@@ -315,12 +304,10 @@
           );
         };
 
-        // Improved High-Contrast Note Component
         const NoteInput = ({ initialValue, onSave, isLocked = false }) => {
           const [value, setValue] = useState(initialValue || '');
           const [saved, setSaved] = useState(true);
 
-          // Update local state if initialValue changes (e.g. from DB sync)
           useEffect(() => {
             setValue(initialValue || '');
           }, [initialValue]);
@@ -367,7 +354,6 @@
           );
         };
 
-        // --- In-Card Dependency Section ---
         const DependencySection = ({ mod, allMods, onAdd, onEdit }) => {
             const [resolvedDeps, setResolvedDeps] = useState([]);
             const [isLoading, setIsLoading] = useState(true);
@@ -390,7 +376,6 @@
                 const resolve = async () => {
                    setIsLoading(true);
                    const results = await Promise.all(required.map(async (dep) => {
-                      // 1. Check if already installed (Local Lookup)
                       const localMod = allMods.find(m => m.id === dep.project_id);
                       if (localMod) {
                          return { 
@@ -402,7 +387,6 @@
                          };
                       }
                       
-                      // 2. If missing, Fetch Info
                       const info = await resolveDependencyName(dep.project_id);
                       return { 
                          ...dep, 
@@ -432,7 +416,7 @@
                                 key={`${mod.id}-dep-${idx}`}
                                 onClick={(e) => {
                                     if(dep.status === 'missing' && dep.slug) onAdd(e, dep.slug);
-                                    if(dep.status === 'installed' && dep.modData) onEdit(dep.modData.id); // PASS ID ONLY
+                                    if(dep.status === 'installed' && dep.modData) onEdit(dep.modData.id); 
                                 }}
                                 disabled={dep.status === 'missing' && !dep.slug}
                                 className={`flex items-center gap-2 px-2 py-1 rounded border text-xs transition-all ${
@@ -465,19 +449,15 @@
             );
         };
 
-        // --- Mod Card Component (Extracted for reuse in Modal) ---
         const ModCard = ({ mod, allMods, isCheckingUpdates, accessLevel, activeTab, onVersionChange, onApprove, onRemove, onAddDependency, onEditDependency, isModal = false, onUpdateNote, currentUser, onVote }) => {
             
             const isLocked = mod.note && mod.noteAuthorId && mod.noteAuthorId !== currentUser?.uid && accessLevel !== 'admin';
             
-            // Voting Logic
             const upvotes = mod.upvotes || [];
             const downvotes = mod.downvotes || [];
             const hasUpvoted = currentUser && upvotes.includes(currentUser.uid);
             const hasDownvoted = currentUser && downvotes.includes(currentUser.uid);
 
-            // STYLE UPDATE: 
-            // Reduced card background opacity to 50% (bg-red-900/50) for better readability while maintaining the alert status.
             const cardStatusStyle = mod.target_version_number === 'None Found' 
                 ? 'bg-red-900/50 border-red-500/50' 
                 : 'hover:bg-slate-800/80';
@@ -486,7 +466,6 @@
                 <Card className={`p-4 transition-colors ${isCheckingUpdates ? 'opacity-70' : 'opacity-100'} ${cardStatusStyle}`}>
                     <div className="flex flex-col md:flex-row md:items-center gap-4 justify-between">
                     
-                    {/* Mod Info */}
                     <div className="flex items-start gap-4 flex-1">
                         {mod.icon_url ? (
                             <img src={mod.icon_url} className="w-12 h-12 rounded bg-slate-900 object-cover" /> 
@@ -503,7 +482,6 @@
                         </div>
                         <p className="text-sm text-slate-400 line-clamp-1 max-w-xl">{mod.description}</p>
                         
-                        {/* Wishlist Note Input */}
                         {activeTab === 'wishlist' && (
                             <NoteInput 
                                 initialValue={mod.note} 
@@ -514,7 +492,6 @@
                         </div>
                     </div>
 
-                    {/* Versions Dropdown - Disabled if User & Active Tab */}
                     {activeTab === 'active' && (
                         <div className="flex items-center gap-6 bg-slate-900/50 p-3 rounded-lg border border-slate-700/50">
                             <div className="flex flex-col items-end min-w-[140px]">
@@ -523,7 +500,7 @@
                                 <select 
                                     value={mod.installed_version}
                                     onChange={(e) => onVersionChange(mod.id, e.target.value)}
-                                    disabled={accessLevel === 'user'} // LOCK FOR USERS
+                                    disabled={accessLevel === 'user'} 
                                     className="w-full appearance-none bg-slate-800 border border-slate-600 hover:border-slate-500 text-slate-300 text-sm font-mono py-1 pl-2 pr-6 rounded cursor-pointer focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     {!mod.server_candidates || mod.server_candidates.length === 0 
@@ -546,10 +523,8 @@
                         </div>
                     )}
                     
-                    {/* Actions & Voting */}
                     <div className="flex items-center gap-2">
                         
-                        {/* Voting Controls (Wishlist Only) */}
                         {activeTab === 'wishlist' && (
                             <div className="flex items-center gap-2 bg-slate-900/50 rounded-lg px-2 py-1.5 border border-slate-700 mr-2">
                                 <button 
@@ -574,14 +549,12 @@
                             </div>
                         )}
 
-                        {/* Approve / Star (Admin + Wishlist only) */}
                         {activeTab === 'wishlist' && accessLevel === 'admin' && (
                             <button onClick={() => onApprove(mod)} title="Promote to Server Mods" className="p-2 text-yellow-400 bg-yellow-900/20 hover:bg-yellow-900/40 border border-yellow-900/30 rounded transition-colors">
                                 <Icon name="star" className="w-5 h-5" />
                             </button>
                         )}
                         
-                        {/* Delete (ADMIN ONLY ALWAYS) */}
                         {accessLevel === 'admin' && (
                             <button onClick={() => onRemove(mod.id)} title="Remove Mod" className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-900/20 rounded transition-colors">
                                 <Icon name="trash-can" className="w-5 h-5" />
@@ -590,7 +563,6 @@
                     </div>
                     </div>
 
-                    {/* Dependency Section (Shows BOTH Installed and Missing) */}
                     {activeTab === 'active' && !isModal && (
                         <DependencySection mod={mod} allMods={allMods} onAdd={onAddDependency} onEdit={onEditDependency} />
                     )}
@@ -598,7 +570,6 @@
             );
         };
 
-        // --- Dependency Edit Modal ---
         const DependencyModal = ({ mod, allMods, isOpen, onClose, onRemove, onUpdateNote, ...props }) => {
             if (!isOpen || !mod) return null;
 
@@ -619,7 +590,7 @@
                             isModal={true}
                             onRemove={(id) => {
                                  onRemove(id); // Call standard remove
-                                 onClose(); // Force close modal since item is gone
+                                 onClose(); 
                             }}
                             onUpdateNote={onUpdateNote}
                             {...props}
@@ -632,59 +603,50 @@
         // --- Main App ---
 
         function ModManager() {
-          // --- Auth & Routing State ---
           const [user, setUser] = useState(null);
-          const [view, setView] = useState('login'); // 'login', 'dashboard', 'create'
-          const [accessLevel, setAccessLevel] = useState('guest'); // 'admin', 'user'
+          const [view, setView] = useState('login'); 
+          const [accessLevel, setAccessLevel] = useState('guest'); 
           const [serverDocId, setServerDocId] = useState(null);
-          const [sessionCodes, setSessionCodes] = useState({ admin: '', user: '' }); // For display to admin
+          const [sessionCodes, setSessionCodes] = useState({ admin: '', user: '' }); 
           const [serverName, setServerName] = useState('My Server');
           const [serverIP, setServerIP] = useState('');
 
-          // --- Data State ---
           const [serverVersion, setServerVersion] = useState('1.21.8');
           const [targetVersion, setTargetVersion] = useState('1.21.10');
           const [loader, setLoader] = useState('fabric');
-          const [activeTab, setActiveTab] = useState('active'); // 'active' | 'wishlist'
+          const [activeTab, setActiveTab] = useState('active'); 
 
           const [mods, setMods] = useState([]);
           const [wishlist, setWishlist] = useState([]);
 
-          // --- UI State ---
           const [modInput, setModInput] = useState('');
           const [loading, setLoading] = useState(false);
           const [error, setError] = useState(null);
           const [checkingUpdates, setCheckingUpdates] = useState(false);
           const [filter, setFilter] = useState('all'); 
-          const [showLibraries, setShowLibraries] = useState(false); // Default HIDDEN
+          const [showLibraries, setShowLibraries] = useState(false); 
           const [joinCode, setJoinCode] = useState('');
           const [isSyncing, setIsSyncing] = useState(false);
-          const [copyFeedback, setCopyFeedback] = useState(false); // Used for Invite Link
-          const [ipCopyFeedback, setIpCopyFeedback] = useState(false); // Used for Server IP
+          const [copyFeedback, setCopyFeedback] = useState(false); 
+          const [ipCopyFeedback, setIpCopyFeedback] = useState(false); 
           const [adminCodeCopyFeedback, setAdminCodeCopyFeedback] = useState(false);
           const [userCodeCopyFeedback, setUserCodeCopyFeedback] = useState(false);
           const [showScriptModal, setShowScriptModal] = useState(false); 
           const [editingDependencyId, setEditingDependencyId] = useState(null); 
           
-          // --- Search State ---
           const [searchResults, setSearchResults] = useState([]);
           const [showDropdown, setShowDropdown] = useState(false);
           const debouncedSearch = useDebounce(modInput, 300);
 
-          // --- Edit IP State ---
           const [isEditingIP, setIsEditingIP] = useState(false);
           const [editIPValue, setEditIPValue] = useState('');
 
-          // --- Creation State ---
           const [newServerName, setNewServerName] = useState('');
           const [newServerIP, setNewServerIP] = useState('');
           
-          // --- Local Backup State ---
           const fileInputRef = useRef(null);
-          const [importStatus, setImportStatus] = useState(null); // {type: 'success' | 'error', message: string}
+          const [importStatus, setImportStatus] = useState(null); 
 
-
-          // --- Firebase Auth ---
           useEffect(() => {
             const initAuth = async () => {
               try {
@@ -698,7 +660,6 @@
             return auth.onAuthStateChanged(setUser);
           }, []);
 
-          // --- CORE JOIN LOGIC (Reusable) ---
           const attemptJoin = useCallback(async (code) => {
             if (!code || !user) return;
             setLoading(true);
@@ -737,10 +698,8 @@
                 setServerDocId(foundDoc.id);
                 setAccessLevel(role);
                 setSessionCodes(foundCodes);
-                // SAVE TO LOCAL STORAGE
                 localStorage.setItem('modrinth-server-code', codeUpper);
                 
-                // DEFAULT TAB LOGIC: Users go to Wishlist, Admins go to Active
                 setActiveTab(role === 'admin' ? 'active' : 'wishlist');
                 
                 setView('dashboard');
@@ -756,7 +715,6 @@
             }
           }, [user]);
           
-          // --- Auto-Login Effect ---
           useEffect(() => {
             if (!user) return;
             if (serverDocId) return;
@@ -773,7 +731,6 @@
             }
           }, [user, serverDocId, attemptJoin]);
 
-          // --- Real-time Listener ---
           useEffect(() => {
             if (!user || !serverDocId) return;
 
@@ -807,14 +764,12 @@
             return () => unsubscribe();
           }, [user, serverDocId]);
 
-          // --- Search Effect ---
           useEffect(() => {
               if (!debouncedSearch || debouncedSearch.length < 2) {
                   setSearchResults([]);
                   return;
               }
 
-              // Don't search if it looks like a URL or strict ID
               if (debouncedSearch.includes('/') || debouncedSearch.includes('modrinth.com')) {
                   setSearchResults([]);
                   return;
@@ -822,11 +777,6 @@
 
               const doSearch = async () => {
                   try {
-                      // Facet breakdown:
-                      // 1. Loader: Must match current loader (Fabric)
-                      // 2. Type: Must be a Mod (not modpack)
-                      // 3. Version: Must exist for EITHER current server version OR target version
-                      // 4. Environment: Must be Server Required OR Server Optional (Filters out Client-only mods like Sodium)
                       const facets = JSON.stringify([
                           [`categories:${loader}`], 
                           ["project_type:mod"],
@@ -844,8 +794,6 @@
               };
               doSearch();
           }, [debouncedSearch, loader, serverVersion, targetVersion]);
-
-          // --- Actions ---
 
           const handleCreateServer = async (e) => {
             e.preventDefault();
@@ -886,7 +834,7 @@
               setServerIP(newServerIP.trim());
               
               localStorage.setItem('modrinth-server-code', adminCode);
-              setActiveTab('active'); // Admins start on active
+              setActiveTab('active'); 
               
               setView('dashboard');
             } catch (err) {
@@ -943,6 +891,12 @@
             try {
               const query = `?loaders=["${loader}"]&game_versions=${JSON.stringify([serverVersion, targetVersion])}`;
               const response = await fetch(`${MODRINTH_API_BASE}/project/${slug}/version${query}`);
+              
+              if (!response.ok) {
+                  console.warn(`Failed to fetch versions for ${slug}: ${response.status}`);
+                  return [];
+              }
+              
               const versions = await response.json();
               return versions.map(v => {
                   const primaryFile = v.files.find(f => f.primary) || v.files[0];
@@ -951,10 +905,11 @@
                       primary_file_url: primaryFile ? primaryFile.url : null
                   };
               });
-            } catch (err) { return []; }
+            } catch (err) { 
+                console.error(err);
+                return []; 
+            }
           }, [loader, serverVersion, targetVersion]);
-
-          // --- Mod Logic ---
 
           const handleAddMod = async (e, manualInput = null, overrideTab = null) => {
             if(e) e.preventDefault();
@@ -962,7 +917,6 @@
 
             if (!inputVal.trim()) return;
             
-            // Clear search UI immediately
             setSearchResults([]);
             setShowDropdown(false);
             
@@ -1027,25 +981,19 @@
             }
           };
 
-          // --- Deep Link Listener (For Future Extension) ---
           useEffect(() => {
-              if (isSyncing) return; // Wait for initial data load to prevent overwrite risks
+              if (isSyncing) return; 
               
               const params = new URLSearchParams(window.location.search);
               const modToAdd = params.get('add_to_wishlist');
               
               if (modToAdd) {
-                  // Clear the param so it doesn't re-trigger on refresh
                   const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
                   window.history.replaceState({path: newUrl}, '', newUrl);
-                  
-                  // Force switch to wishlist view for UX
                   setActiveTab('wishlist');
-                  
-                  // Trigger add with explicit override to 'wishlist' tab
                   handleAddMod(null, modToAdd, 'wishlist');
               }
-          }, [isSyncing]); // Depend on sync status
+          }, [isSyncing]); 
 
           const handleRemoveMod = async (id) => {
             if (activeTab === 'active') {
@@ -1064,7 +1012,6 @@
              
              let newMods = [...mods];
              if (!mods.some(m => m.slug === mod.slug)) {
-                // Clear note and vote data before moving to active
                 const { note, noteAuthorId, upvotes, downvotes, ...cleanMod } = mod;
                 newMods.push(cleanMod);
              }
@@ -1077,21 +1024,15 @@
             const updatedWishlist = wishlist.map(m => {
                 if (m.id !== modId) return m;
                 
-                // Safety initialize arrays
                 let ups = m.upvotes || [];
                 let downs = m.downvotes || [];
 
-                // Check existing votes
                 const hadUp = ups.includes(uid);
                 const hadDown = downs.includes(uid);
 
-                // Remove user from both arrays initially (reset vote)
                 ups = ups.filter(id => id !== uid);
                 downs = downs.filter(id => id !== uid);
 
-                // If it was a toggle (e.g. clicked Up when already Up), we leave it removed (neutral).
-                // If it was a new vote or a switch, we add it to the correct array.
-                
                 if (type === 'up' && !hadUp) {
                     ups.push(uid);
                 }
@@ -1173,16 +1114,12 @@
                   await docRef.update({
                       serverIP: editIPValue.trim()
                   });
-                  // Local state update via snapshot listener will happen automatically, 
-                  // but we close edit mode immediately
                   setIsEditingIP(false);
               } catch (e) {
                   console.error("Failed to update IP:", e);
               }
           };
 
-          // --- Local Backup Handlers ---
-          
           const handleExportBackup = () => {
               const data = {
                   modManagerVersion: '1.0',
@@ -1209,7 +1146,7 @@
           };
           
           const triggerImport = () => {
-              if (accessLevel !== 'admin') return; // Safety check
+              if (accessLevel !== 'admin') return; 
               fileInputRef.current.click();
           };
 
@@ -1258,47 +1195,68 @@
               event.target.value = null; 
           };
 
-
-          // --- Bulk Check ---
           const checkAllUpdates = useCallback(async (listToUpdate = mods, tab = 'active') => {
             if (listToUpdate.length === 0) return;
             setCheckingUpdates(true);
             
-            const updatedList = await Promise.all(listToUpdate.map(async (mod) => {
-              const allVersions = await fetchModVersions(mod.slug);
-              
-              const serverCandidates = allVersions.filter(v => v.game_versions.includes(serverVersion));
-              const targetCandidates = allVersions.filter(v => v.game_versions.includes(targetVersion));
-              const latestServer = serverCandidates.length > 0 ? serverCandidates[0] : null;
-              const latestTarget = targetCandidates.length > 0 ? targetCandidates[0] : null;
-              
-              const currentInstalled = mod.installed_version === 'Not Installed' && latestServer 
-                ? latestServer.version_number 
-                : mod.installed_version;
-
-              const versionObj = serverCandidates.find(v => v.version_number === currentInstalled);
-              const currentDependencies = versionObj ? versionObj.dependencies : (mod.dependencies || []);
-
-              return {
-                ...mod,
-                server_candidates: serverCandidates.map(v => v.version_number),
-                installed_version: currentInstalled,
-                target_version_number: latestTarget ? latestTarget.version_number : 'None Found',
-                target_file_url: latestTarget ? `https://modrinth.com/mod/${mod.slug}/version/${latestTarget.version_number}` : null,
-                primary_file_url: latestTarget ? latestTarget.primary_file_url : null,
-                dependencies: currentDependencies,
-                status: latestTarget ? 'ready' : 'missing'
-              };
-            }));
-
-            if (tab === 'active') await saveToServer(updatedList, null);
-            else await saveToServer(null, updatedList);
+            const BATCH_SIZE = 5; 
+            const DELAY_MS = 1200; 
+            const delay = (ms) => new Promise(res => setTimeout(res, ms));
             
+            let workingList = [...listToUpdate];
+
+            for (let i = 0; i < listToUpdate.length; i += BATCH_SIZE) {
+                const batch = listToUpdate.slice(i, i + BATCH_SIZE);
+                
+                const results = await Promise.all(batch.map(async (mod) => {
+                    try {
+                        const allVersions = await fetchModVersions(mod.slug);
+                        
+                        const serverCandidates = allVersions.filter(v => v.game_versions.includes(serverVersion));
+                        const targetCandidates = allVersions.filter(v => v.game_versions.includes(targetVersion));
+                        const latestServer = serverCandidates.length > 0 ? serverCandidates[0] : null;
+                        const latestTarget = targetCandidates.length > 0 ? targetCandidates[0] : null;
+                        
+                        const currentInstalled = mod.installed_version === 'Not Installed' && latestServer 
+                            ? latestServer.version_number 
+                            : mod.installed_version;
+
+                        const versionObj = serverCandidates.find(v => v.version_number === currentInstalled);
+                        const currentDependencies = versionObj ? versionObj.dependencies : (mod.dependencies || []);
+
+                        return {
+                            ...mod,
+                            server_candidates: serverCandidates.map(v => v.version_number),
+                            installed_version: currentInstalled,
+                            target_version_number: latestTarget ? latestTarget.version_number : 'None Found',
+                            target_file_url: latestTarget ? `https://modrinth.com/mod/${mod.slug}/version/${latestTarget.version_number}` : null,
+                            primary_file_url: latestTarget ? latestTarget.primary_file_url : null,
+                            dependencies: currentDependencies,
+                            status: latestTarget ? 'ready' : 'missing'
+                        };
+                    } catch (e) {
+                        console.warn(`Skipping ${mod.title} due to error`, e);
+                        return mod; 
+                    }
+                }));
+
+                results.forEach(updatedItem => {
+                    const index = workingList.findIndex(m => m.id === updatedItem.id);
+                    if (index !== -1) workingList[index] = updatedItem;
+                });
+
+                if (tab === 'active') await saveToServer(workingList, null);
+                else await saveToServer(null, workingList);
+
+                if (i + BATCH_SIZE < listToUpdate.length) {
+                    await delay(DELAY_MS);
+                }
+            }
+
             setCheckingUpdates(false);
-          }, [fetchModVersions, serverVersion, targetVersion]);
+          }, [fetchModVersions, serverVersion, targetVersion, mods, wishlist]);
 
 
-          // --- Filter Logic for Libraries ---
           const activeDependencyIds = new Set();
           if (activeTab === 'active') {
               mods.forEach(m => {
@@ -1312,13 +1270,10 @@
               });
           }
 
-          // --- Compute the Active Modal Mod LIVE from the List ---
           const activeEditingMod = editingDependencyId 
               ? (activeTab === 'active' ? mods : wishlist).find(m => m.id === editingDependencyId)
               : null;
 
-
-          // --- Views ---
 
           if (view === 'login') {
             return (
@@ -1420,8 +1375,6 @@
             )
           }
 
-          // --- Dashboard View ---
-
           const visibleList = activeTab === 'active' ? mods : wishlist;
           const filteredMods = visibleList.filter(mod => {
             if (filter === 'ready' && mod.target_version_number === 'None Found') return false;
@@ -1458,7 +1411,6 @@
                   onUpdateNote={handleUpdateNote}
               />
 
-              {/* Header */}
               <header className="bg-slate-950 border-b border-slate-800 sticky top-0 z-20">
                 <div className="max-w-6xl mx-auto px-6 py-4 flex flex-col md:flex-row items-center justify-between gap-4">
                   <div className="flex items-center gap-4 w-full md:w-auto">
@@ -1472,7 +1424,6 @@
                           {isSyncing ? <Icon name="wifi" className="w-3 h-3 text-emerald-500 animate-pulse" /> : <div className="w-2 h-2 rounded-full bg-slate-700" />}
                         </div>
                         
-                        {/* IP Display & Edit */}
                         {(serverIP || accessLevel === 'admin') && (
                             <div className="mt-0.5 min-h-[20px]">
                                 {isEditingIP ? (
@@ -1521,9 +1472,7 @@
                   
                   <div className="flex items-center gap-4 w-full md:w-auto justify-end">
                      
-                     {/* --- Admin/User Codes Display (Visible on mid/desktop screens) --- */}
                      <div className="hidden md:flex items-center gap-4 mr-4">
-                        {/* 1. Admin Code (Admin Only) */}
                         {accessLevel === 'admin' && (
                             <div className="flex items-center gap-2 px-3 py-1 bg-emerald-900/20 border border-emerald-900/50 rounded">
                                 <div className="flex flex-col items-end">
@@ -1541,7 +1490,6 @@
                             </div>
                         )}
 
-                        {/* 2. User Code (Visible to all connected users) */}
                         {serverDocId && sessionCodes.user !== '' && (
                             <div className="flex items-center gap-2 px-3 py-1 bg-slate-900/50 border border-slate-800 rounded">
                                 <div className="flex flex-col items-end">
@@ -1559,9 +1507,7 @@
                             </div>
                         )}
                     </div>
-                    {/* --- End Codes Display --- */}
 
-                     {/* Version Selectors (Read Only for Users, Edit for Admin) */}
                      <div className="flex flex-col items-end group">
                         <label className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">On Server</label>
                         <div className="relative">
@@ -1599,7 +1545,6 @@
 
               <main className="max-w-6xl mx-auto px-6 py-8 space-y-8">
                 
-                {/* List Toggles */}
                 <div className="flex justify-center">
                    <div className="bg-slate-800 p-1 rounded-lg inline-flex">
                       <button 
@@ -1617,7 +1562,6 @@
                    </div>
                 </div>
 
-                {/* Dashboard Status */}
                 {totalMods > 0 && activeTab === 'active' && (
                   <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 shadow-lg relative overflow-hidden">
                      <div className="flex flex-col md:flex-row justify-between items-end md:items-center mb-4 gap-4">
@@ -1644,9 +1588,7 @@
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   
-                  {/* Add Mod Form */}
                   <Card className="md:col-span-2 p-5 overflow-visible"> 
-                     {/* Disable Add to Server if User, Allow Add to Wishlist always */}
                      {(activeTab === 'active' && accessLevel === 'user') ? (
                          <div className="h-full flex flex-col items-center justify-center text-slate-500 py-4">
                             <Icon name="lock" className="w-8 h-8 mb-2 opacity-50" />
@@ -1674,7 +1616,6 @@
                                     if(searchResults.length > 0) setShowDropdown(true);
                                 }}
                                 onBlur={() => {
-                                    // Delay hiding to allow click event on dropdown items
                                     setTimeout(() => setShowDropdown(false), 200);
                                 }}
                                 placeholder="Search mods (e.g. JEI, Sodium) or paste URL..."
@@ -1682,7 +1623,6 @@
                                 autoComplete="off"
                               />
                               
-                              {/* Search Dropdown */}
                               {showDropdown && searchResults.length > 0 && (
                                   <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-600 rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
                                       <div className="p-2 bg-slate-900/50 border-b border-slate-700">
@@ -1693,7 +1633,7 @@
                                               key={result.slug}
                                               className="w-full text-left p-3 hover:bg-slate-700 transition-colors flex items-start gap-3 border-b border-slate-700/50 last:border-0"
                                               onMouseDown={(e) => {
-                                                  e.preventDefault(); // Prevent blur
+                                                  e.preventDefault(); 
                                                   handleAddMod(null, result.slug);
                                               }}
                                           >
@@ -1731,7 +1671,6 @@
                      )}
                   </Card>
 
-                  {/* Controls */}
                   <Card className="p-5 flex flex-col">
                      <div className="mb-4">
                        <h2 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-2">Actions</h2>
@@ -1741,19 +1680,16 @@
                             {copyFeedback ? 'Copied Link!' : 'Copy Invite Link'}
                           </Button>
                           
-                          {/* Admin Only Download Script */}
                           {accessLevel === 'admin' && activeTab === 'active' && (
                              <Button variant="outline" onClick={() => setShowScriptModal(true)} className="text-xs py-2">
                                  <Icon name="terminal" className="w-3 h-3" /> Get Download Script
                              </Button>
                           )}
                           
-                          {/* Export (Available to ALL users) */}
                           <Button variant="outline" onClick={handleExportBackup} className="text-xs py-2">
                               <Icon name="file-export" className="w-3 h-3" /> Export Backup
                           </Button>
                           
-                          {/* Import (Available only to ADMIN) */}
                           {accessLevel === 'admin' && (
                            <Button variant="outline" onClick={triggerImport} className="text-xs py-2">
                                <Icon name="file-import" className="w-3 h-3" /> Import Backup
@@ -1781,9 +1717,7 @@
                   </Card>
                 </div>
 
-                {/* Mods List */}
                 <div className="space-y-4">
-                  {/* Filters & Headers (Same as before) */}
                   <div className="flex items-center justify-between px-2">
                     <div className="flex items-center gap-4">
                       <h2 className="text-lg font-medium text-white">
@@ -1796,7 +1730,6 @@
                       </div>
                     </div>
                     
-                    {/* Show Libraries Toggle (Only active tab) */}
                     {activeTab === 'active' && (
                         <button 
                             onClick={() => setShowLibraries(!showLibraries)} 
