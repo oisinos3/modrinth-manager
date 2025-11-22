@@ -188,25 +188,54 @@
         // --- Sub-Components ---
 
         const ScriptModal = ({ isOpen, onClose, mods, targetVersion }) => {
+          const [scriptType, setScriptType] = useState('bash'); 
+
+          // NEW: Auto-detect Windows to set correct default
+          useEffect(() => {
+             if (typeof navigator !== 'undefined' && navigator.userAgent.indexOf("Win") !== -1) {
+                 setScriptType('powershell');
+             }
+          }, []);
+          
           if (!isOpen) return null;
 
           const readyMods = mods.filter(m => m.target_version_number !== 'None Found');
           const uniqueMods = [...new Map(readyMods.map(item => [item.slug, item])).values()];
 
-          let script = `#!/bin/bash\n# Auto-generated Mod Migration Script for ${targetVersion}\n`;
-          script += `# Contains ${uniqueMods.length} unique mods\n\n`;
-          script += `mkdir -p mods\ncd mods\n\n`;
-          
-          uniqueMods.forEach(mod => {
-            const url = mod.primary_file_url || mod.target_file_url;
-            const filename = `${mod.slug}-${mod.target_version_number}.jar`;
-            
-            script += `echo "Downloading ${mod.title}..."\n`;
-            // -O forces the filename. -nc skips download if file exists (No Clobber)
-            script += `wget -nc -O "${filename}" "${url}"\n`; 
-          });
+          let script = "";
 
-          script += `\necho "Download complete! ${uniqueMods.length} mods processed."`;
+          if (scriptType === 'bash') {
+              script += `#!/bin/bash\n# Auto-generated Mod Migration Script for ${targetVersion}\n`;
+              script += `# Contains ${uniqueMods.length} unique mods\n\n`;
+              script += `mkdir -p mods\ncd mods\n\n`;
+              
+              uniqueMods.forEach(mod => {
+                const url = mod.primary_file_url || mod.target_file_url;
+                const filename = `${mod.slug}-${mod.target_version_number}.jar`;
+                
+                script += `echo "Downloading ${mod.title}..."\n`;
+                script += `wget -nc -O "${filename}" "${url}"\n`; 
+              });
+          } else {
+              // PowerShell Script
+              script += `# Auto-generated Mod Migration Script for ${targetVersion}\n`;
+              script += `# Contains ${uniqueMods.length} unique mods\n\n`;
+              script += `New-Item -ItemType Directory -Force -Path mods | Out-Null\n`;
+              script += `Set-Location mods\n\n`;
+              
+              uniqueMods.forEach(mod => {
+                const url = mod.primary_file_url || mod.target_file_url;
+                const filename = `${mod.slug}-${mod.target_version_number}.jar`;
+                
+                script += `Write-Host "Downloading ${mod.title}..."\n`;
+                // PowerShell check if file exists equivalent to wget -nc
+                script += `if (-not (Test-Path "${filename}")) {\n`;
+                script += `    Invoke-WebRequest -Uri "${url}" -OutFile "${filename}"\n`;
+                script += `}\n`;
+              });
+          }
+
+          script += `\n${scriptType === 'bash' ? 'echo' : 'Write-Host'} "Download complete! ${uniqueMods.length} mods processed."`;
 
           return (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
@@ -217,9 +246,26 @@
                   </h3>
                   <button onClick={onClose} className="text-slate-400 hover:text-white"><Icon name="x" className="w-5 h-5" /></button>
                 </div>
+                
+                {/* Script Type Toggle */}
+                <div className="flex gap-2 mb-4 p-1 bg-slate-900/50 rounded-lg border border-slate-700 w-fit">
+                    <button 
+                        onClick={() => setScriptType('bash')}
+                        className={`px-3 py-1 rounded text-xs font-bold transition-colors ${scriptType === 'bash' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white'}`}
+                    >
+                        Bash (Linux/Mac)
+                    </button>
+                    <button 
+                        onClick={() => setScriptType('powershell')}
+                        className={`px-3 py-1 rounded text-xs font-bold transition-colors ${scriptType === 'powershell' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'}`}
+                    >
+                        PowerShell (Windows)
+                    </button>
+                </div>
+
                 <p className="text-slate-400 text-sm mb-3">
-                  Run this in your server's terminal to download all <strong>{uniqueMods.length} Ready</strong> mods. 
-                  <br/><span className="text-amber-400 text-xs">Note: Ensure you are in an empty folder or your 'mods' folder before running.</span>
+                  Run this in your <strong>{scriptType === 'bash' ? 'Terminal' : 'PowerShell'}</strong> (not the Minecraft Console) to download all <strong>{uniqueMods.length} Ready</strong> mods. 
+                  <br/><span className="text-amber-400 text-xs">Note: Ensure you are in your server's root folder before running.</span>
                 </p>
                 <div className="bg-slate-950 border border-slate-700 rounded p-3 mb-4 relative group overflow-hidden">
                   <pre className="text-xs font-mono text-emerald-400 break-all block max-h-[400px] overflow-y-auto whitespace-pre-wrap">
