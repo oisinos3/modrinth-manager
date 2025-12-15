@@ -21,6 +21,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-storage-compat.js"></script>
 
     <style>
         /* Ensures the entire page background is dark slate */
@@ -83,6 +84,7 @@
         const app = firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.firestore();
+        const storage = firebase.storage();
 
         const storageAppId = 'default-mod-manager'; 
 
@@ -201,7 +203,7 @@
 
           // Filter for READY mods AND ENABLED mods
           const readyMods = mods.filter(m => 
-              (m.enabled !== false) && // NEW: Check if enabled
+              (m.enabled !== false) && 
               ((m.target_version_number !== 'None Found') || (m.isCustom && m.status === 'ready'))
           );
           const uniqueMods = [...new Map(readyMods.map(item => [item.slug, item])).values()];
@@ -392,21 +394,54 @@
           );
         };
 
-        // --- Custom Mod Modal ---
+        // --- Custom Mod Modal (Includes File Upload) ---
         const CustomModModal = ({ isOpen, onClose, onAdd }) => {
             const [name, setName] = useState('');
             const [desc, setDesc] = useState('');
             const [url, setUrl] = useState('');
+            const [file, setFile] = useState(null);
+            const [uploading, setUploading] = useState(false);
 
             if (!isOpen) return null;
 
-            const handleSubmit = (e) => {
+            const handleFileChange = (e) => {
+                if (e.target.files[0]) {
+                    setFile(e.target.files[0]);
+                    setUrl(''); // Clear URL if file selected
+                }
+            };
+
+            const handleSubmit = async (e) => {
                 e.preventDefault();
                 if (!name.trim()) return;
-                onAdd(name, desc, url);
+                
+                let finalUrl = url;
+
+                if (file) {
+                    setUploading(true);
+                    try {
+                        // Upload to Firebase Storage
+                        const storageRef = storage.ref();
+                        // Sanitize filename but keep extension
+                        const safeName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '');
+                        const fileRef = storageRef.child(`uploads/${safeName}`);
+                        
+                        await fileRef.put(file);
+                        finalUrl = await fileRef.getDownloadURL();
+                    } catch (err) {
+                        console.error("Upload failed", err);
+                        alert("Upload failed! Check console or Firebase Rules.");
+                        setUploading(false);
+                        return;
+                    }
+                    setUploading(false);
+                }
+
+                onAdd(name, desc, finalUrl);
                 setName('');
                 setDesc('');
                 setUrl('');
+                setFile(null);
                 onClose();
             }
 
@@ -426,12 +461,40 @@
                                 <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Description</label>
                                 <textarea value={desc} onChange={e => setDesc(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded p-2 text-white focus:border-purple-500 outline-none h-20 resize-none" placeholder="What does it do?" />
                             </div>
-                            <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Direct Download URL (Optional)</label>
-                                <input type="text" value={url} onChange={e => setUrl(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded p-2 text-white focus:border-purple-500 outline-none font-mono text-xs" placeholder="https://..." />
-                                <p className="text-[10px] text-slate-500 mt-1">If provided, the script will try to download it.</p>
+                            
+                            {/* File Upload Section */}
+                            <div className="bg-slate-950 border border-slate-800 rounded-lg p-3">
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Upload JAR File</label>
+                                <input 
+                                    type="file" 
+                                    accept=".jar,.zip" 
+                                    onChange={handleFileChange}
+                                    className="block w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-purple-900/30 file:text-purple-400 hover:file:bg-purple-900/50"
+                                />
+                                {file && <p className="text-[10px] text-emerald-400 mt-2"><Icon name="check" className="w-3 h-3" /> Ready to upload: {file.name}</p>}
                             </div>
-                            <Button type="submit" disabled={!name.trim()} variant="purple" className="w-full mt-2">Add Custom Mod</Button>
+
+                            <div className="relative flex items-center py-2">
+                                <div className="flex-grow border-t border-slate-700"></div>
+                                <span className="flex-shrink-0 mx-2 text-slate-600 text-xs">OR USE URL</span>
+                                <div className="flex-grow border-t border-slate-700"></div>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Direct Download URL</label>
+                                <input 
+                                    type="text" 
+                                    value={url} 
+                                    onChange={e => { setUrl(e.target.value); setFile(null); }} 
+                                    disabled={!!file}
+                                    className="w-full bg-slate-950 border border-slate-700 rounded p-2 text-white focus:border-purple-500 outline-none font-mono text-xs disabled:opacity-50" 
+                                    placeholder={file ? "File selected (URL disabled)" : "https://..."} 
+                                />
+                            </div>
+                            
+                            <Button type="submit" disabled={!name.trim() || uploading} variant="purple" className="w-full mt-2">
+                                {uploading ? <span className="animate-pulse">Uploading...</span> : "Add Custom Mod"}
+                            </Button>
                         </form>
                     </div>
                 </div>
