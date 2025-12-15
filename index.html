@@ -710,7 +710,7 @@
                             >
                                 <Icon 
                                     name={isEnabled ? "toggle-on" : "toggle-off"} 
-                                    className={`w-6 h-6 transition-colors ${isEnabled ? "text-emerald-400" : "text-slate-500"}`} 
+                                    className={`text-4xl transition-colors ${isEnabled ? "text-emerald-400" : "text-slate-500"}`} 
                                 />
                             </button>
                         )}
@@ -1716,6 +1716,7 @@
           const filteredMods = visibleList.filter(mod => {
             if (filter === 'ready' && mod.target_version_number === 'None Found') return false;
             if (filter === 'missing' && mod.target_version_number !== 'None Found') return false;
+            if (filter === 'custom' && !mod.isCustom) return false;
             
             if (activeTab === 'active' && !showLibraries && activeDependencyIds.has(mod.id)) {
                 return false;
@@ -2123,10 +2124,10 @@
                         <button onClick={() => setFilter('all')} className={`px-3 py-1 rounded text-xs font-medium transition-all ${filter === 'all' ? 'bg-slate-600 text-white' : 'text-slate-400 hover:text-white'}`}>All</button>
                         <button onClick={() => setFilter('ready')} className={`px-3 py-1 rounded text-xs font-medium transition-all ${filter === 'ready' ? 'bg-emerald-900/50 text-emerald-400' : 'text-slate-400 hover:text-white'}`}>Ready</button>
                         <button onClick={() => setFilter('missing')} className={`px-3 py-1 rounded text-xs font-medium transition-all ${filter === 'missing' ? 'bg-amber-900/50 text-amber-400' : 'text-slate-400 hover:text-white'}`}>Missing</button>
+                        <button onClick={() => setFilter('custom')} className={`px-3 py-1 rounded text-xs font-medium transition-all ${filter === 'custom' ? 'bg-purple-900/50 text-purple-400' : 'text-slate-400 hover:text-white'}`}>Custom</button>
                       </div>
                     </div>
                     
-                    {/* Show Libraries Toggle (Only active tab) */}
                     {activeTab === 'active' && (
                         <button 
                             onClick={() => setShowLibraries(!showLibraries)} 
