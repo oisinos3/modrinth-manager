@@ -74,7 +74,6 @@
 
         const getFirebaseConfig = () => {
             if (manualConfig.apiKey) return manualConfig;
-            // Simplified configuration for GitHub Pages deployment
             return {}; 
         };
 
@@ -154,7 +153,6 @@
           return `${prefix}-${result}`; // e.g. ADM-X92Z
         };
 
-        // Robust Copy Function
         const copyToClipboard = (text) => {
           const textArea = document.createElement("textarea");
           textArea.value = text;
@@ -174,7 +172,6 @@
           }
         };
 
-        // Helper to resolve dependency ID to Title
         const resolveDependencyName = async (depId) => {
             try {
                 const response = await fetch(`${MODRINTH_API_BASE}/project/${depId}`);
@@ -187,14 +184,13 @@
         // --- Sub-Components ---
 
         const ScriptModal = ({ isOpen, onClose, mods, targetVersion, syncedVersion }) => {
-          const [scriptType, setScriptType] = useState('bash'); // 'bash' | 'powershell'
-          const [copied, setCopied] = useState(false); // New state for feedback
+          const [scriptType, setScriptType] = useState('bash'); 
+          const [copied, setCopied] = useState(false);
 
           // Use syncedVersion for the script header if available, otherwise target
           const effectiveVersion = syncedVersion || targetVersion;
           const isMismatch = syncedVersion && targetVersion && syncedVersion !== targetVersion;
 
-          // NEW: Auto-detect Windows to set correct default
           useEffect(() => {
              if (typeof navigator !== 'undefined' && navigator.userAgent.indexOf("Win") !== -1) {
                  setScriptType('powershell');
@@ -203,8 +199,11 @@
           
           if (!isOpen) return null;
 
-          // Include custom mods if they are ready (manually added)
-          const readyMods = mods.filter(m => (m.target_version_number !== 'None Found') || (m.isCustom && m.status === 'ready'));
+          // Filter for READY mods AND ENABLED mods
+          const readyMods = mods.filter(m => 
+              (m.enabled !== false) && // NEW: Check if enabled
+              ((m.target_version_number !== 'None Found') || (m.isCustom && m.status === 'ready'))
+          );
           const uniqueMods = [...new Map(readyMods.map(item => [item.slug, item])).values()];
 
           let script = "";
@@ -213,7 +212,6 @@
               script += `#!/bin/bash\n# Auto-generated Mod Migration Script for ${effectiveVersion}\n`;
               script += `# Contains ${uniqueMods.length} unique mods\n\n`;
               
-              // SMART FOLDER DETECTION (Bash)
               script += `# Check if we are already in a 'mods' folder\n`;
               script += `if [[ $(basename "$PWD") != "mods" ]]; then\n`;
               script += `  mkdir -p mods\n`;
@@ -308,7 +306,6 @@
                   <button onClick={onClose} className="text-slate-400 hover:text-white"><Icon name="x" className="w-5 h-5" /></button>
                 </div>
                 
-                {/* Script Type Toggle */}
                 <div className="flex gap-2 mb-4 p-1 bg-slate-900/50 rounded-lg border border-slate-700 w-fit">
                     <button 
                         onClick={() => setScriptType('bash')}
@@ -345,12 +342,10 @@
           );
         };
 
-        // Improved High-Contrast Note Component
         const NoteInput = ({ initialValue, onSave, isLocked = false }) => {
           const [value, setValue] = useState(initialValue || '');
           const [saved, setSaved] = useState(true);
 
-          // Update local state if initialValue changes (e.g. from DB sync)
           useEffect(() => {
             setValue(initialValue || '');
           }, [initialValue]);
@@ -443,7 +438,6 @@
             );
         };
 
-        // --- In-Card Dependency Section ---
         const DependencySection = ({ mod, allMods, onAdd, onEdit }) => {
             const [resolvedDeps, setResolvedDeps] = useState([]);
             const [isLoading, setIsLoading] = useState(true);
@@ -466,19 +460,17 @@
                 const resolve = async () => {
                    setIsLoading(true);
                    const results = await Promise.all(required.map(async (dep) => {
-                      // 1. Check if already installed (Local Lookup)
                       const localMod = allMods.find(m => m.id === dep.project_id);
                       if (localMod) {
                          return { 
                              ...dep, 
                              status: 'installed', 
                              title: localMod.title, 
-                             slug: localMod.slug,
-                             modData: localMod
+                             slug: localMod.slug, 
+                             modData: localMod 
                          };
                       }
                       
-                      // 2. If missing, Fetch Info
                       const info = await resolveDependencyName(dep.project_id);
                       return { 
                          ...dep, 
@@ -508,7 +500,7 @@
                                 key={`${mod.id}-dep-${idx}`}
                                 onClick={(e) => {
                                     if(dep.status === 'missing' && dep.slug) onAdd(e, dep.slug);
-                                    if(dep.status === 'installed' && dep.modData) onEdit(dep.modData.id); // PASS ID ONLY
+                                    if(dep.status === 'installed' && dep.modData) onEdit(dep.modData.id); 
                                 }}
                                 disabled={dep.status === 'missing' && !dep.slug}
                                 className={`flex items-center gap-2 px-2 py-1 rounded border text-xs transition-all ${
@@ -541,26 +533,31 @@
             );
         };
 
-        // --- Mod Card Component (Extracted for reuse in Modal) ---
-        const ModCard = ({ mod, allMods, isCheckingUpdates, accessLevel, activeTab, onVersionChange, onApprove, onRemove, onAddDependency, onEditDependency, isModal = false, onUpdateNote, currentUser, onVote }) => {
+        const ModCard = ({ mod, allMods, isCheckingUpdates, accessLevel, activeTab, onVersionChange, onApprove, onRemove, onAddDependency, onEditDependency, isModal = false, onUpdateNote, currentUser, onVote, onToggle }) => {
             
             const isLocked = mod.note && mod.noteAuthorId && mod.noteAuthorId !== currentUser?.uid && accessLevel !== 'admin';
+            // NEW: Enabled logic (default to true if undefined)
+            const isEnabled = mod.enabled !== false; 
             
-            // Voting Logic
             const upvotes = mod.upvotes || [];
             const downvotes = mod.downvotes || [];
             const hasUpvoted = currentUser && upvotes.includes(currentUser.uid);
             const hasDownvoted = currentUser && downvotes.includes(currentUser.uid);
 
             // STYLE UPDATE: 
-            // Reduced card background opacity to 50% (bg-red-900/50) for better readability while maintaining the alert status.
-            // Also logic to NOT show red for Custom mods
-            const cardStatusStyle = mod.target_version_number === 'None Found' && !mod.isCustom
-                ? 'bg-red-950/80 border-red-900/50' 
-                : 'hover:bg-slate-800/80';
+            // - If disabled: Dimmed & Grayscale
+            // - Else if outdated: Red
+            // - Else: Standard
+            let cardStatusStyle = 'hover:bg-slate-800/80';
+            
+            if (!isEnabled) {
+                cardStatusStyle = 'opacity-60 grayscale';
+            } else if (mod.target_version_number === 'None Found' && !mod.isCustom) {
+                cardStatusStyle = 'bg-red-950/80 border-red-900/50';
+            }
 
             return (
-                <Card className={`p-4 transition-colors ${isCheckingUpdates ? 'opacity-70' : 'opacity-100'} ${cardStatusStyle}`}>
+                <Card className={`p-4 transition-all duration-300 ${isCheckingUpdates ? 'opacity-70' : 'opacity-100'} ${cardStatusStyle}`}>
                     <div className="flex flex-col md:flex-row md:items-center gap-4 justify-between">
                     
                     {/* Mod Info */}
@@ -568,7 +565,6 @@
                         {mod.icon_url ? (
                             <img src={mod.icon_url} className="w-12 h-12 rounded bg-slate-900 object-cover" /> 
                         ) : (
-                            // FIX: Use larger icon for the placeholder
                             <div className="w-12 h-12 rounded bg-slate-900 flex items-center justify-center">
                                 {mod.isCustom ? <Icon name="file" className="w-6 h-6 text-purple-400" /> : <Icon name="cube" className="w-6 h-6 text-slate-400" />}
                             </div>
@@ -576,7 +572,10 @@
                         <div>
                         <div className="flex items-center gap-3 mb-1">
                             <h3 className="font-bold text-lg text-slate-200">{mod.title}</h3>
-                            {mod.isCustom ? (
+                            {/* Status Badge Logic */}
+                            {!isEnabled ? (
+                                <Badge color="slate">Disabled</Badge>
+                            ) : mod.isCustom ? (
                                 <Badge color="purple">Custom</Badge>
                             ) : (
                                 mod.target_version_number === 'None Found' ? <Badge color="red">Outdated</Badge> : <Badge color="green">Ready</Badge>
@@ -611,7 +610,7 @@
                                     <select 
                                         value={mod.installed_version}
                                         onChange={(e) => onVersionChange(mod.id, e.target.value)}
-                                        disabled={accessLevel === 'user'} // LOCK FOR USERS
+                                        disabled={accessLevel === 'user'} 
                                         className="w-full appearance-none bg-slate-800 border border-slate-600 hover:border-slate-500 text-slate-300 text-sm font-mono py-1 pl-2 pr-6 rounded cursor-pointer focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
                                         {!mod.server_candidates || mod.server_candidates.length === 0 
@@ -639,6 +638,20 @@
                     {/* Actions */}
                     <div className="flex items-center gap-2">
                         
+                        {/* Toggle Button (Admin & Active Only) */}
+                        {accessLevel === 'admin' && activeTab === 'active' && (
+                            <button 
+                                onClick={() => onToggle(mod.id)} 
+                                className="p-2 rounded hover:bg-slate-700/50 transition-colors"
+                                title={isEnabled ? "Disable Mod" : "Enable Mod"}
+                            >
+                                <Icon 
+                                    name={isEnabled ? "toggle-on" : "toggle-off"} 
+                                    className={`w-6 h-6 transition-colors ${isEnabled ? "text-emerald-400" : "text-slate-500"}`} 
+                                />
+                            </button>
+                        )}
+
                         {/* Voting Controls (Wishlist Only) */}
                         {activeTab === 'wishlist' && (
                             <div className="flex items-center gap-2 bg-slate-900/50 rounded-lg px-2 py-1.5 border border-slate-700 mr-2">
@@ -1096,7 +1109,8 @@
                   status: 'ready',
                   note: '',
                   upvotes: [],
-                  downvotes: []
+                  downvotes: [],
+                  enabled: true // Default to enabled
               };
 
               if (activeTab === 'active') {
@@ -1160,7 +1174,8 @@
                 status: latestTarget ? 'ready' : 'missing',
                 note: '',
                 upvotes: [], 
-                downvotes: [] 
+                downvotes: [],
+                enabled: true // Default to enabled
               };
 
               const targetList = overrideTab || activeTab;
@@ -1268,6 +1283,26 @@
                   return m;
               });
               await saveToServer(null, updatedWishlist);
+          };
+
+          const handleToggleMod = async (modId) => {
+              if (accessLevel !== 'admin') return;
+              
+              // Only toggle active mods, but safety check for list
+              const listToUpdate = activeTab === 'active' ? mods : wishlist;
+              
+              const updatedList = listToUpdate.map(m => {
+                  if (m.id === modId) {
+                      // If enabled is undefined, it's effectively true, so we toggle to false. 
+                      // If explicitly true, toggle to false. If false, toggle to true.
+                      const currentState = m.enabled !== false;
+                      return { ...m, enabled: !currentState };
+                  }
+                  return m;
+              });
+
+              if (activeTab === 'active') await saveToServer(updatedList, null);
+              else await saveToServer(null, updatedList);
           };
 
           const handleVersionChange = async (modId, newVersion) => {
@@ -1456,7 +1491,9 @@
                             target_file_url: latestTarget ? `https://modrinth.com/mod/${mod.slug}/version/${latestTarget.version_number}` : null,
                             primary_file_url: latestTarget ? latestTarget.primary_file_url : null,
                             dependencies: currentDependencies,
-                            status: latestTarget ? 'ready' : 'missing'
+                            status: latestTarget ? 'ready' : 'missing',
+                            // Preserve existing enable state if not set
+                            enabled: mod.enabled !== undefined ? mod.enabled : true
                         };
                     } catch (e) {
                         console.warn(`Skipping ${mod.title} due to error`, e);
@@ -1612,8 +1649,6 @@
             )
           }
 
-          // --- Dashboard View ---
-
           const visibleList = activeTab === 'active' ? mods : wishlist;
           const filteredMods = visibleList.filter(mod => {
             if (filter === 'ready' && mod.target_version_number === 'None Found') return false;
@@ -1654,6 +1689,7 @@
                   onAddDependency={handleAddMod}
                   onEditDependency={setEditingDependencyId}
                   onUpdateNote={handleUpdateNote}
+                  onToggle={handleToggleMod}
               />
               
               <CustomModModal
@@ -2062,6 +2098,7 @@
                             onUpdateNote={handleUpdateNote}
                             currentUser={user}
                             onVote={handleVote}
+                            onToggle={handleToggleMod}
                         />
                       ))}
                       {filteredMods.length === 0 && totalMods > 0 && (
