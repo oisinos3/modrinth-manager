@@ -88,7 +88,12 @@
 
         const storageAppId = 'default-mod-manager'; 
 
+        // --- Minecraft Versions ---
+        // Updated to include the new year-based versioning (2026+) alongside legacy 1.x versions
         const MC_VERSIONS = [
+            // 2026+ year-based versioning (Mojang's new scheme: YY.RELEASE.PATCH)
+            "26.1.1", "26.1",
+            // Legacy 1.x versions
             "1.21.11", "1.21.10", "1.21.9", "1.21.8", "1.21.7", "1.21.6", "1.21.5", 
             "1.21.4", "1.21.3", "1.21.2", "1.21.1", "1.21", 
             "1.20.6", "1.20.4", "1.20.2", "1.20.1", 
@@ -871,8 +876,8 @@
           const [serverStatus, setServerStatus] = useState(null); // { online: bool, players: {online, max} }
 
           // --- Data State ---
-          const [serverVersion, setServerVersion] = useState('1.21.8');
-          const [targetVersion, setTargetVersion] = useState('1.21.10');
+          const [serverVersion, setServerVersion] = useState('26.1');
+          const [targetVersion, setTargetVersion] = useState('26.1.1');
           // NEW: Track what version the current list is actually synced to
           const [syncedVersion, setSyncedVersion] = useState(null);
           
@@ -1052,13 +1057,13 @@
                 const data = docSnap.data();
                 setMods(data.mods || []);
                 setWishlist(data.wishlist || []);
-                setServerVersion(data.serverVersion || '1.21.8');
-                setTargetVersion(data.targetVersion || '1.21.10');
+                setServerVersion(data.serverVersion || '26.1');
+                setTargetVersion(data.targetVersion || '26.1.1');
                 setServerName(data.serverName || 'My Server');
                 setServerIP(data.serverIP || '');
                 setPanelUrl(data.panelUrl || ''); // Load panel URL
                 // Load synced version from DB, fallback to serverVersion for legacy data
-                setSyncedVersion(data.syncedVersion || data.serverVersion || '1.21.8');
+                setSyncedVersion(data.syncedVersion || data.serverVersion || '26.1');
                 setIsSyncing(false);
               } else {
                 setError("Server deleted or unavailable.");
@@ -1093,8 +1098,8 @@
               const doSearch = async () => {
                   try {
                       // Filter for specific loader AND ensure it's a mod (not a modpack/resourcepack)
-                      // NEW: Also filter for mods compatible with Server Version OR Target Version
-                      // NEW: Also filter for server-side compatibility (required OR optional)
+                      // Also filter for mods compatible with Server Version OR Target Version
+                      // Also filter for server-side compatibility (required OR optional)
                       const facets = JSON.stringify([
                           [`categories:${loader}`], 
                           ["project_type:mod"],
@@ -1142,9 +1147,9 @@
                 serverIP: newServerIP.trim(),
                 adminCode,
                 userCode,
-                serverVersion: '1.21.8',
-                targetVersion: '1.21.10',
-                syncedVersion: '1.21.10', // Default initial sync to target
+                serverVersion: '26.1',
+                targetVersion: '26.1.1',
+                syncedVersion: '26.1.1', // Default initial sync to target
                 mods: [],
                 wishlist: []
               });
@@ -1590,8 +1595,8 @@
                           throw new Error("Invalid file structure. Missing mod lists.");
                       }
                       
-                      setServerVersion(content.serverVersion || '1.21.8');
-                      setTargetVersion(content.targetVersion || '1.21.10');
+                      setServerVersion(content.serverVersion || '26.1');
+                      setTargetVersion(content.targetVersion || '26.1.1');
                       
                       const docRef = db.collection('artifacts').doc(storageAppId).collection('public').doc('data').collection('servers').doc(serverDocId);
                       await docRef.update({
@@ -1927,7 +1932,7 @@
                           )}
                         </div>
                         
-                        {/* IP Display & Edit (Simplified to read-only since we have settings modal now, click to copy remains) */}
+                        {/* IP Display */}
                         {(serverIP) && (
                             <div className="mt-0.5 min-h-[20px]">
                                 <div className="flex items-center gap-2 group cursor-pointer" onClick={handleCopyIP} title="Copy IP">
@@ -1956,7 +1961,6 @@
                                     <span className="text-xs text-emerald-400 font-mono font-bold tracking-wider leading-none mt-1">{sessionCodes.admin}</span>
                                 </div>
                                 
-                                {/* FIX: Use button wrapper as provided by user */}
                                 {adminCodeCopyFeedback ? (
                                     <Icon name="circle-check" className="w-3 h-3 text-emerald-400" title="Copied!" />
                                 ) : (
@@ -1975,7 +1979,6 @@
                                     <span className="text-xs text-slate-300 font-mono font-bold tracking-wider leading-none mt-1">{sessionCodes.user}</span>
                                 </div>
                                 
-                                {/* FIX: Use button wrapper as provided by user */}
                                 {userCodeCopyFeedback ? (
                                     <Icon name="circle-check" className="w-3 h-3 text-emerald-400" title="Copied!" />
                                 ) : (
@@ -2235,7 +2238,7 @@
 
                 {/* Mods List */}
                 <div className="space-y-4">
-                  {/* Filters & Headers (Same as before) */}
+                  {/* Filters & Headers */}
                   <div className="flex items-center justify-between px-2">
                     <div className="flex items-center gap-4">
                       <h2 className="text-lg font-medium text-white">
