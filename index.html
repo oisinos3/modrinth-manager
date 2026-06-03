@@ -683,19 +683,25 @@
             );
         };
 
-        const ModCard = ({ mod, allMods, isCheckingUpdates, accessLevel, activeTab, onVersionChange, onApprove, onRemove, onAddDependency, onEditDependency, isModal = false, onUpdateNote, currentUser, onVote, onToggle, onInstall, onRemoveFromVM, installStatus = {}, vmApiUrl, upgradeExpanded = false }) => {
+        const ModCard = ({ mod, allMods, isCheckingUpdates, accessLevel, activeTab, onVersionChange, onApprove, onRemove, onAddDependency, onEditDependency, isModal = false, onUpdateNote, currentUser, onVote, onInstall, onRemoveFromVM, installStatus = {}, vmApiUrl, vmDiskFiles = null, upgradeExpanded = false }) => {
 
             const isLocked = mod.note && mod.noteAuthorId && mod.noteAuthorId !== currentUser?.uid && accessLevel !== 'admin';
             const isEnabled = mod.enabled !== false;
             const sideLabel = getSideLabel(mod.server_side, mod.client_side);
             const modInstallState = installStatus[mod.id];
             const candidates = mod.server_candidates && mod.server_candidates.length > 0 ? [...new Set(mod.server_candidates)] : [];
-            const canDirectInstall = vmApiUrl && activeTab === 'active' && !mod.isCustom && candidates.length > 0;
 
-            // Local version selection — pre-select the currently installed version
+            // Disk status: check if this mod's jar is on the VM
+            const isOnDisk = vmDiskFiles !== null && vmDiskFiles.some(f =>
+                f.startsWith(mod.slug + '-') || f === mod.slug + '.jar'
+            );
+            // Show install controls: VM configured, admin, active, has something to install
+            const canInstall = vmApiUrl && activeTab === 'active' && accessLevel === 'admin' &&
+                (!mod.isCustom ? candidates.length > 0 : !!mod.customUrl);
+
+            // Local version selection
             const defaultVer = mod.installed_version && candidates.includes(mod.installed_version)
-                ? mod.installed_version
-                : candidates[0] ?? '';
+                ? mod.installed_version : candidates[0] ?? '';
             const [selectedVersion, setSelectedVersion] = useState(defaultVer);
             useEffect(() => {
                 const v = mod.installed_version && candidates.includes(mod.installed_version)
@@ -709,113 +715,120 @@
             const hasDownvoted = currentUser && downvotes.includes(currentUser.uid);
 
             return (
-                <Card className={`px-4 py-3 transition-all duration-300 ${isCheckingUpdates ? 'opacity-70' : ''} ${!isEnabled ? 'opacity-50 grayscale' : ''}`}>
-                    {/* ── Main row ── */}
-                    <div className="flex items-center gap-3">
+                <Card className={`p-3 flex flex-col gap-2 transition-all duration-300 ${isCheckingUpdates ? 'opacity-70' : ''} ${!isEnabled ? 'opacity-50 grayscale' : ''}`}>
 
-                        {/* Icon */}
+                    {/* ── Top: icon + name + badges + remove ── */}
+                    <div className="flex items-start gap-2.5">
                         {mod.icon_url ? (
-                            <img src={mod.icon_url} className="w-9 h-9 rounded bg-slate-900 object-cover shrink-0" />
+                            <img src={mod.icon_url} className="w-10 h-10 rounded bg-slate-900 object-cover shrink-0" />
                         ) : (
-                            <div className="w-9 h-9 rounded bg-slate-900 flex items-center justify-center shrink-0">
-                                {mod.isCustom ? <Icon name="file" className="w-4 h-4 text-purple-400" /> : <Icon name="cube" className="w-4 h-4 text-slate-500" />}
+                            <div className="w-10 h-10 rounded bg-slate-900 flex items-center justify-center shrink-0">
+                                {mod.isCustom ? <Icon name="file" className="w-5 h-5 text-purple-400" /> : <Icon name="cube" className="w-5 h-5 text-slate-500" />}
                             </div>
                         )}
-
-                        {/* Name + badges */}
-                        <div className="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
-                            <span className="font-semibold text-slate-200">{mod.title}</span>
-                            {!isEnabled && <Badge color="slate">Disabled</Badge>}
-                            {mod.isCustom && <Badge color="purple">Custom</Badge>}
-                            {sideLabel && <Badge color={sideLabel.color}>{sideLabel.label}</Badge>}
-                            <a href={mod.project_url || '#'} target="_blank" rel="noreferrer" className="text-slate-600 hover:text-emerald-400 transition-colors">
+                        <div className="flex-1 min-w-0">
+                            <div className="font-semibold text-sm text-slate-200 leading-snug truncate">{mod.title}</div>
+                            <div className="flex items-center gap-1 mt-1 flex-wrap">
+                                {!isEnabled && <Badge color="slate">Disabled</Badge>}
+                                {mod.isCustom && <Badge color="purple">Custom</Badge>}
+                                {sideLabel && <Badge color={sideLabel.color}>{sideLabel.label}</Badge>}
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-0.5 shrink-0 -mt-0.5">
+                            <a href={mod.project_url || '#'} target="_blank" rel="noreferrer" className="p-1.5 text-slate-600 hover:text-emerald-400 transition-colors rounded">
                                 <Icon name="external-link" className="w-3 h-3" />
                             </a>
+                            {activeTab === 'wishlist' && accessLevel === 'admin' && (
+                                <button onClick={() => onApprove(mod)} title="Promote to Server Mods" className="p-1.5 text-yellow-500 hover:bg-yellow-900/30 rounded transition-colors">
+                                    <Icon name="star" className="w-3.5 h-3.5" />
+                                </button>
+                            )}
+                            {(accessLevel === 'admin' || activeTab === 'wishlist') && (
+                                <button onClick={() => onRemove(mod.id)} title="Remove" className="p-1.5 text-slate-600 hover:text-red-400 hover:bg-red-900/20 rounded transition-colors">
+                                    <Icon name="trash-can" className="w-3.5 h-3.5" />
+                                </button>
+                            )}
                         </div>
+                    </div>
 
-                        {/* Version dropdown */}
-                        {activeTab === 'active' && !mod.isCustom && candidates.length > 0 && (
-                            <div className="relative shrink-0">
-                                <select
-                                    value={selectedVersion}
-                                    onChange={e => setSelectedVersion(e.target.value)}
-                                    className="appearance-none bg-slate-800 border border-slate-700 text-slate-300 text-xs font-mono py-1.5 pl-2 pr-6 rounded focus:outline-none focus:border-emerald-500 cursor-pointer max-w-[160px]"
-                                >
-                                    {candidates.map(v => <option key={v} value={v}>{v}</option>)}
-                                </select>
-                                <Icon name="chevron-down" className="w-3 h-3 text-slate-500 absolute right-1.5 top-2 pointer-events-none" />
-                            </div>
-                        )}
-                        {activeTab === 'active' && mod.isCustom && (
-                            <span className="text-xs text-slate-500 font-mono shrink-0">{mod.customUrl ? 'URL Linked' : 'Manual'}</span>
-                        )}
+                    {/* ── Bottom: version + install status (active) ── */}
+                    {activeTab === 'active' && (
+                        <div className="flex items-center gap-2 pt-2 border-t border-slate-700/40 mt-auto">
+                            {/* Version dropdown (Modrinth mods) */}
+                            {!mod.isCustom && candidates.length > 0 && (
+                                <div className="relative flex-1 min-w-0">
+                                    <select
+                                        value={selectedVersion}
+                                        onChange={e => setSelectedVersion(e.target.value)}
+                                        className="w-full appearance-none bg-slate-800 border border-slate-700 text-slate-300 text-xs font-mono py-1.5 pl-2 pr-6 rounded focus:outline-none focus:border-emerald-500 cursor-pointer truncate"
+                                    >
+                                        {candidates.map(v => <option key={v} value={v}>{v}</option>)}
+                                    </select>
+                                    <Icon name="chevron-down" className="w-3 h-3 text-slate-500 absolute right-1.5 top-2 pointer-events-none" />
+                                </div>
+                            )}
+                            {mod.isCustom && (
+                                <span className="text-xs text-slate-500 font-mono flex-1 truncate">
+                                    {mod.customUrl ? 'Firebase Storage' : 'Manual install'}
+                                </span>
+                            )}
 
-                        {/* Install to VM */}
-                        {canDirectInstall && accessLevel === 'admin' && (
-                            <button
-                                onClick={() => modInstallState === 'done' ? onRemoveFromVM(mod) : onInstall(mod, selectedVersion)}
-                                disabled={modInstallState === 'installing' || modInstallState === 'removing'}
-                                title={modInstallState === 'done' ? 'Remove from VM' : `Install ${selectedVersion}`}
-                                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded text-xs font-bold transition-all border shrink-0 ${
-                                    modInstallState === 'installing' ? 'bg-emerald-900/20 border-emerald-700 text-emerald-400 cursor-wait' :
-                                    modInstallState === 'done'       ? 'bg-emerald-700 border-emerald-600 text-white hover:bg-red-900/40 hover:border-red-700 hover:text-red-400' :
-                                    modInstallState === 'error'      ? 'bg-red-900/30 border-red-700 text-red-400' :
-                                    'bg-slate-900 border-slate-600 text-slate-300 hover:bg-emerald-900/30 hover:border-emerald-600 hover:text-emerald-400'
-                                }`}
-                            >
-                                <Icon name={
-                                    modInstallState === 'installing' ? 'arrows-rotate' :
-                                    modInstallState === 'done'       ? 'circle-check' :
-                                    modInstallState === 'error'      ? 'triangle-exclamation' :
-                                    'cloud-arrow-down'
-                                } className={modInstallState === 'installing' ? 'animate-spin' : ''} />
-                                {modInstallState === 'installing' ? 'Installing…' :
-                                 modInstallState === 'done'       ? 'Installed' :
-                                 modInstallState === 'error'      ? 'Failed' : 'Install'}
-                            </button>
-                        )}
+                            {/* Install / Installed indicator */}
+                            {canInstall && (
+                                modInstallState === 'installing' || modInstallState === 'removing' ? (
+                                    <span className="flex items-center gap-1 text-xs text-emerald-400 shrink-0">
+                                        <Icon name="arrows-rotate" className="animate-spin w-3 h-3" />
+                                        {modInstallState === 'installing' ? 'Installing…' : 'Removing…'}
+                                    </span>
+                                ) : modInstallState === 'error' ? (
+                                    <span className="text-xs text-red-400 shrink-0 flex items-center gap-1">
+                                        <Icon name="triangle-exclamation" className="w-3 h-3" /> Failed
+                                    </span>
+                                ) : isOnDisk ? (
+                                    <button
+                                        onClick={() => onRemoveFromVM(mod, selectedVersion)}
+                                        className="flex items-center gap-1 text-xs text-emerald-400 hover:text-red-400 transition-colors shrink-0 group"
+                                        title="Click to remove from VM"
+                                    >
+                                        <Icon name="circle-check" className="w-3.5 h-3.5 group-hover:hidden" />
+                                        <Icon name="trash-can" className="w-3.5 h-3.5 hidden group-hover:block" />
+                                        <span className="group-hover:hidden">Installed</span>
+                                        <span className="hidden group-hover:inline">Remove</span>
+                                    </button>
+                                ) : (
+                                    <button
+                                        onClick={() => onInstall(mod, selectedVersion)}
+                                        className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium border border-slate-600 text-slate-400 hover:border-emerald-600 hover:text-emerald-400 hover:bg-emerald-900/20 transition-all shrink-0"
+                                        title={`Install ${mod.isCustom ? mod.title : selectedVersion} to VM`}
+                                    >
+                                        <Icon name="cloud-arrow-down" className="w-3 h-3" /> Install
+                                    </button>
+                                )
+                            )}
+                        </div>
+                    )}
 
-                        {/* Wishlist voting */}
-                        {activeTab === 'wishlist' && (
-                            <div className="flex items-center gap-1 bg-slate-900/50 rounded-lg px-2 py-1 border border-slate-700 shrink-0">
+                    {/* ── Wishlist bottom row ── */}
+                    {activeTab === 'wishlist' && (
+                        <div className="flex items-center gap-2 pt-2 border-t border-slate-700/40 mt-auto">
+                            <div className="flex items-center gap-1 bg-slate-900/50 rounded px-2 py-1 border border-slate-700">
                                 <button onClick={() => onVote(mod.id, 'up')} className={`flex items-center gap-1 px-1 rounded hover:bg-slate-800 transition-colors ${hasUpvoted ? 'text-emerald-400' : 'text-slate-500'}`}>
-                                    <Icon name="thumbs-up" className="w-3.5 h-3.5" /><span className="text-xs font-mono">{upvotes.length}</span>
+                                    <Icon name="thumbs-up" className="w-3 h-3" /><span className="text-xs font-mono">{upvotes.length}</span>
                                 </button>
                                 <div className="w-px h-3 bg-slate-700" />
                                 <button onClick={() => onVote(mod.id, 'down')} className={`flex items-center gap-1 px-1 rounded hover:bg-slate-800 transition-colors ${hasDownvoted ? 'text-red-400' : 'text-slate-500'}`}>
-                                    <Icon name="thumbs-down" className="w-3.5 h-3.5" /><span className="text-xs font-mono">{downvotes.length}</span>
+                                    <Icon name="thumbs-down" className="w-3 h-3" /><span className="text-xs font-mono">{downvotes.length}</span>
                                 </button>
                             </div>
-                        )}
-
-                        {/* Approve (wishlist admin) */}
-                        {activeTab === 'wishlist' && accessLevel === 'admin' && (
-                            <button onClick={() => onApprove(mod)} title="Promote to Server Mods" className="p-1.5 text-yellow-400 bg-yellow-900/20 hover:bg-yellow-900/40 border border-yellow-900/30 rounded transition-colors shrink-0">
-                                <Icon name="star" className="w-4 h-4" />
-                            </button>
-                        )}
-
-                        {/* Toggle (admin, active) */}
-                        {accessLevel === 'admin' && activeTab === 'active' && (
-                            <button onClick={() => onToggle(mod.id)} title={isEnabled ? 'Disable' : 'Enable'} className="p-1 rounded hover:bg-slate-700/50 transition-colors shrink-0">
-                                <Icon name={isEnabled ? 'toggle-on' : 'toggle-off'} className={`text-2xl transition-colors ${isEnabled ? 'text-emerald-400' : 'text-slate-500'}`} />
-                            </button>
-                        )}
-
-                        {/* Remove */}
-                        {(accessLevel === 'admin' || activeTab === 'wishlist') && (
-                            <button onClick={() => onRemove(mod.id)} title="Remove" className="p-1.5 text-slate-600 hover:text-red-400 hover:bg-red-900/20 rounded transition-colors shrink-0">
-                                <Icon name="trash-can" className="w-4 h-4" />
-                            </button>
-                        )}
-                    </div>
+                        </div>
+                    )}
 
                     {/* Note (wishlist) */}
                     {activeTab === 'wishlist' && (
                         <NoteInput initialValue={mod.note} isLocked={isLocked} onSave={(val) => onUpdateNote(mod.id, val, currentUser?.uid)} />
                     )}
 
-                    {/* Dependencies (only when upgrade section is open) */}
+                    {/* Dependencies (upgrade mode) */}
                     {activeTab === 'active' && !isModal && upgradeExpanded && (
                         <DependencySection mod={mod} allMods={allMods} onAdd={onAddDependency} onEdit={onEditDependency} />
                     )}
@@ -1020,8 +1033,9 @@
           // --- VM Direct Install ---
           const [vmApiUrl, setVmApiUrl] = useState('');
           const [installStatus, setInstallStatus] = useState({}); // { modId: 'installing' | 'done' | 'error' }
-          // --- Upgrade section ---
-          const [upgradeExpanded, setUpgradeExpanded] = useState(false);
+          const [vmDiskFiles, setVmDiskFiles] = useState(null); // null = not loaded, [] = loaded but empty
+          // --- Upgrade panel ---
+          const [showUpgradePanel, setShowUpgradePanel] = useState(false);
           // --- Actions overflow menu ---
           const [showActionsMenu, setShowActionsMenu] = useState(false);
           // --- VM Sync modal ---
@@ -1558,28 +1572,41 @@
           const vmBase = () => vmApiUrl.replace(/\/+$/, '');
           const VM_API_KEY = 'b639c6ceb6fa13cf5313650a340731f3c22b792677f2f72ab05d29483cdb3aa3';
 
-          // versionNumber comes from the card's local dropdown selection
+          // versionNumber: from card dropdown (ignored for custom mods)
           const handleInstallMod = async (mod, versionNumber) => {
             if (!vmApiUrl) return;
             setInstallStatus(prev => ({ ...prev, [mod.id]: 'installing' }));
             try {
-              // Fetch the download URL for this specific version from Modrinth
-              const query = `?loaders=["${loader}"]&game_versions=["${serverVersion}"]`;
-              const vRes = await fetch(`${MODRINTH_API_BASE}/project/${mod.slug}/version${query}`);
-              if (!vRes.ok) throw new Error('Could not fetch version info from Modrinth');
-              const versions = await vRes.json();
-              const match = versions.find(v => v.version_number === versionNumber);
-              if (!match) throw new Error(`Version ${versionNumber} not found on Modrinth`);
-              const primaryFile = match.files.find(f => f.primary) || match.files[0];
-              if (!primaryFile) throw new Error('No download file found for this version');
+              let downloadUrl, filename;
 
-              const filename = `${mod.slug}-${versionNumber}.jar`;
+              if (mod.isCustom) {
+                if (!mod.customUrl) throw new Error('No URL for this custom mod');
+                downloadUrl = mod.customUrl;
+                filename = `${mod.slug}.jar`;
+              } else {
+                const query = `?loaders=["${loader}"]&game_versions=["${serverVersion}"]`;
+                const vRes = await fetch(`${MODRINTH_API_BASE}/project/${mod.slug}/version${query}`);
+                if (!vRes.ok) throw new Error('Could not fetch version info from Modrinth');
+                const versions = await vRes.json();
+                const match = versions.find(v => v.version_number === versionNumber);
+                if (!match) throw new Error(`Version ${versionNumber} not found on Modrinth`);
+                const primaryFile = match.files.find(f => f.primary) || match.files[0];
+                if (!primaryFile) throw new Error('No download file found');
+                downloadUrl = primaryFile.url;
+                filename = `${mod.slug}-${versionNumber}.jar`;
+              }
+
               const res = await fetch(`${vmBase()}/install`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'x-api-key': VM_API_KEY },
-                body: JSON.stringify({ url: primaryFile.url, filename, slug: mod.slug })
+                body: JSON.stringify({ url: downloadUrl, filename, slug: mod.slug })
               });
               if (!res.ok) throw new Error(`VM responded ${res.status}`);
+              // Update local disk state so button flips to "Installed" immediately
+              setVmDiskFiles(prev => prev
+                ? [...prev.filter(f => !f.startsWith(mod.slug + '-') && f !== mod.slug + '.jar'), filename]
+                : [filename]
+              );
               setInstallStatus(prev => ({ ...prev, [mod.id]: 'done' }));
               setTimeout(() => setInstallStatus(prev => { const n = {...prev}; delete n[mod.id]; return n; }), 3000);
             } catch (err) {
@@ -1589,13 +1616,18 @@
             }
           };
 
-          const handleRemoveFromVM = async (mod) => {
+          const handleRemoveFromVM = async (mod, selectedVersion) => {
             if (!vmApiUrl) return;
-            const filename = `${mod.slug}-${mod.target_version_number}.jar`;
+            // Find actual filename on disk
+            const onDiskFile = vmDiskFiles && vmDiskFiles.find(f =>
+              f.startsWith(mod.slug + '-') || f === mod.slug + '.jar'
+            );
+            const filename = onDiskFile || (mod.isCustom ? `${mod.slug}.jar` : `${mod.slug}-${selectedVersion || mod.installed_version}.jar`);
             setInstallStatus(prev => ({ ...prev, [mod.id]: 'removing' }));
             try {
               const res = await fetch(`${vmBase()}/remove/${encodeURIComponent(filename)}`, { method: 'DELETE', headers: { 'x-api-key': VM_API_KEY } });
               if (!res.ok) throw new Error(`VM responded ${res.status}`);
+              setVmDiskFiles(prev => prev ? prev.filter(f => f !== filename) : null);
               setInstallStatus(prev => ({ ...prev, [mod.id]: 'removed' }));
               setTimeout(() => setInstallStatus(prev => { const n = {...prev}; delete n[mod.id]; return n; }), 2000);
             } catch (err) {
@@ -1604,6 +1636,20 @@
               setTimeout(() => setInstallStatus(prev => { const n = {...prev}; delete n[mod.id]; return n; }), 4000);
             }
           };
+
+          // Auto-fetch disk files when VM URL is set and server is loaded
+          useEffect(() => {
+            if (!vmApiUrl || !serverDocId) return;
+            const fetchDisk = async () => {
+              try {
+                const res = await fetch(`${vmApiUrl.replace(/\/+$/, '')}/mods`, { headers: { 'x-api-key': VM_API_KEY } });
+                if (!res.ok) return;
+                const data = await res.json();
+                setVmDiskFiles(data.files || []);
+              } catch (e) { console.warn('Could not fetch VM disk files:', e); }
+            };
+            fetchDisk();
+          }, [vmApiUrl, serverDocId]);
 
           // --- VM Sync ---
           const handleVmSync = async () => {
@@ -2176,6 +2222,99 @@
                       </button>
                     )}
 
+                    {/* Prepare Upgrade button + popout */}
+                    {accessLevel === 'admin' && activeTab === 'active' && (
+                      <div className="relative">
+                        {showUpgradePanel && <div className="fixed inset-0 z-30" onClick={() => setShowUpgradePanel(false)} />}
+                        <button
+                          onClick={() => setShowUpgradePanel(v => !v)}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded border text-xs font-medium transition-all ${
+                            isSyncMismatch
+                              ? 'bg-amber-900/20 border-amber-700 text-amber-400 animate-pulse'
+                              : showUpgradePanel
+                              ? 'bg-slate-700 border-slate-500 text-white'
+                              : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-500 hover:text-white'
+                          }`}
+                          title="Prepare server upgrade"
+                        >
+                          <Icon name="arrow-up-right-dots" className="w-3.5 h-3.5" />
+                          Upgrade
+                          {isSyncMismatch && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 ml-0.5" />}
+                        </button>
+
+                        {showUpgradePanel && (
+                          <div className="absolute right-0 top-full mt-2 w-96 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl z-40 p-5 space-y-4">
+                            <div className="flex items-center justify-between">
+                              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                                <Icon name="arrow-up-right-dots" className="text-emerald-400" /> Prepare Upgrade
+                              </h3>
+                              <button onClick={() => setShowUpgradePanel(false)} className="text-slate-500 hover:text-white">
+                                <Icon name="xmark" className="w-4 h-4" />
+                              </button>
+                            </div>
+
+                            {/* Version selectors */}
+                            <div className="flex items-center gap-3 flex-wrap">
+                              <div className="flex flex-col">
+                                <label className="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1">On Server</label>
+                                <div className="relative">
+                                  <select value={serverVersion} onChange={e => { setServerVersion(e.target.value); saveVersions(e.target.value, targetVersion); }} className="appearance-none bg-slate-800 border border-slate-600 text-slate-200 font-mono font-bold py-1.5 pl-3 pr-8 rounded text-sm w-32">
+                                    {MC_VERSIONS.map(v => <option key={v} value={v}>{v}</option>)}
+                                  </select>
+                                  <Icon name="chevron-down" className="w-3 h-3 text-slate-500 absolute right-2 top-2.5 pointer-events-none" />
+                                </div>
+                              </div>
+                              <Icon name="arrow-right" className="w-4 h-4 text-slate-600 mt-4" />
+                              <div className="flex flex-col">
+                                <label className="text-[10px] uppercase tracking-widest text-emerald-500 font-bold mb-1">Target</label>
+                                <div className="relative">
+                                  <select value={targetVersion} onChange={e => { setTargetVersion(e.target.value); saveVersions(serverVersion, e.target.value); }} className="appearance-none bg-slate-900 border border-emerald-500/30 text-emerald-400 font-mono font-bold py-1.5 pl-3 pr-8 rounded text-sm w-32">
+                                    {MC_VERSIONS.map(v => <option key={v} value={v}>{v}</option>)}
+                                  </select>
+                                  <Icon name="chevron-down" className="w-3 h-3 text-emerald-500 absolute right-2 top-2.5 pointer-events-none" />
+                                </div>
+                              </div>
+                              <Button variant={isSyncMismatch ? 'primary' : 'secondary'} onClick={() => checkAllUpdates(mods, 'active')} disabled={checkingUpdates || mods.length === 0} className="mt-4 relative overflow-hidden">
+                                {isSyncMismatch && <div className="absolute inset-0 bg-amber-500/20 animate-pulse pointer-events-none" />}
+                                <Icon name="arrows-rotate" className={`w-3.5 h-3.5 ${checkingUpdates ? 'animate-spin' : ''}`} />
+                                {checkingUpdates ? 'Checking…' : 'Refresh'}
+                              </Button>
+                            </div>
+
+                            {/* Progress bar */}
+                            {totalMods > 0 && (
+                              <div>
+                                <div className="flex justify-between text-xs text-slate-500 mb-1">
+                                  <span>{readyMods}/{totalMods} ready for {targetVersion}</span>
+                                  <span className="font-mono font-bold text-white">{percentReady}%</span>
+                                </div>
+                                <div className="w-full bg-slate-950 rounded-full h-2 overflow-hidden border border-slate-700">
+                                  <div className={`h-full transition-all duration-1000 ${readyMods === totalMods ? 'bg-emerald-500' : 'bg-amber-500'}`} style={{ width: `${percentReady}%` }} />
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Version status table */}
+                            {mods.filter(m => !m.isCustom).length > 0 && (
+                              <div className="rounded border border-slate-700/50 overflow-hidden max-h-56 overflow-y-auto">
+                                {mods.filter(m => !m.isCustom).map(mod => (
+                                  <div key={mod.id} className={`flex items-center gap-2 px-3 py-1.5 text-xs border-b border-slate-700/30 last:border-0 ${mod.target_version_number === 'None Found' ? 'bg-red-900/15' : ''}`}>
+                                    {mod.icon_url && <img src={mod.icon_url} className="w-4 h-4 rounded shrink-0" />}
+                                    <span className={`flex-1 font-medium truncate ${mod.target_version_number === 'None Found' ? 'text-red-300' : 'text-slate-300'}`}>{mod.title}</span>
+                                    <span className="font-mono text-slate-500 shrink-0">{mod.installed_version || '—'}</span>
+                                    <Icon name="arrow-right" className="w-3 h-3 text-slate-600 shrink-0" />
+                                    <span className={`font-mono font-bold shrink-0 ${mod.target_version_number === 'None Found' ? 'text-red-400' : 'text-emerald-400'}`}>
+                                      {mod.target_version_number === 'None Found' ? 'None Found' : mod.target_version_number}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     {/* ... overflow menu */}
                     {showActionsMenu && <div className="fixed inset-0 z-20" onClick={() => setShowActionsMenu(false)} />}
                     <div className="relative z-30">
@@ -2240,107 +2379,6 @@
                       </button>
                    </div>
                 </div>
-
-                {/* Prepare Upgrade — collapsed section */}
-                {activeTab === 'active' && (
-                  <div className={`border rounded-xl overflow-hidden transition-all duration-200 ${isSyncMismatch && upgradeExpanded ? 'border-amber-500/50' : 'border-slate-700'}`}>
-                    <button
-                      onClick={() => setUpgradeExpanded(v => !v)}
-                      className={`w-full flex items-center justify-between px-5 py-3 text-sm font-medium transition-colors ${upgradeExpanded ? 'bg-slate-800' : 'bg-slate-800/50 hover:bg-slate-800'}`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <Icon name={isSyncMismatch ? 'triangle-exclamation' : 'arrow-up-right-dots'} className={`w-4 h-4 ${isSyncMismatch ? 'text-amber-400 animate-pulse' : 'text-slate-400'}`} />
-                        <span className={isSyncMismatch ? 'text-amber-400' : 'text-slate-300'}>
-                          Prepare Upgrade
-                        </span>
-                        {isSyncMismatch && <span className="text-xs text-amber-500">— version mismatch</span>}
-                        {!isSyncMismatch && syncedVersion && <span className="text-xs text-slate-500">— synced to {syncedVersion}</span>}
-                      </div>
-                      <Icon name={upgradeExpanded ? 'chevron-up' : 'chevron-down'} className="w-3 h-3 text-slate-500" />
-                    </button>
-
-                    {upgradeExpanded && (
-                      <div className="px-5 py-4 bg-slate-800/30 border-t border-slate-700 space-y-4">
-                        {/* Version selectors */}
-                        <div className="flex items-center gap-4 flex-wrap">
-                          <div className="flex flex-col">
-                            <label className="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1">On Server</label>
-                            <div className="relative">
-                              <select
-                                value={serverVersion}
-                                onChange={(e) => { setServerVersion(e.target.value); saveVersions(e.target.value, targetVersion); }}
-                                disabled={accessLevel !== 'admin'}
-                                className="appearance-none bg-slate-800 border border-slate-600 text-slate-200 font-mono font-bold py-1.5 pl-3 pr-8 rounded text-sm w-32 disabled:opacity-80 disabled:cursor-not-allowed"
-                              >
-                                {MC_VERSIONS.map(v => <option key={v} value={v}>{v}</option>)}
-                              </select>
-                              {accessLevel === 'admin' && <Icon name="chevron-down" className="w-3 h-3 text-slate-500 absolute right-2 top-2.5 pointer-events-none" />}
-                            </div>
-                          </div>
-                          <Icon name="arrow-right" className="w-4 h-4 text-slate-600 mt-4" />
-                          <div className="flex flex-col">
-                            <label className="text-[10px] uppercase tracking-widest text-emerald-500 font-bold mb-1">Target</label>
-                            <div className="relative">
-                              <select
-                                value={targetVersion}
-                                onChange={(e) => { setTargetVersion(e.target.value); saveVersions(serverVersion, e.target.value); }}
-                                disabled={accessLevel !== 'admin'}
-                                className="appearance-none bg-slate-900 border border-emerald-500/30 text-emerald-400 font-mono font-bold py-1.5 pl-3 pr-8 rounded text-sm w-32 disabled:opacity-80 disabled:cursor-not-allowed"
-                              >
-                                {MC_VERSIONS.map(v => <option key={v} value={v}>{v}</option>)}
-                              </select>
-                              {accessLevel === 'admin' && <Icon name="chevron-down" className="w-3 h-3 text-emerald-500 absolute right-2 top-2.5 pointer-events-none" />}
-                            </div>
-                          </div>
-                          <div className="mt-4">
-                            <Button
-                              variant={isSyncMismatch ? 'primary' : 'secondary'}
-                              onClick={() => checkAllUpdates(mods, 'active')}
-                              disabled={checkingUpdates || mods.length === 0}
-                              className="relative overflow-hidden"
-                            >
-                              {isSyncMismatch && <div className="absolute inset-0 bg-amber-500/20 animate-pulse pointer-events-none" />}
-                              <Icon name="arrows-rotate" className={`w-4 h-4 ${checkingUpdates ? 'animate-spin' : ''}`} />
-                              {checkingUpdates ? 'Checking…' : isSyncMismatch ? `Refresh to ${targetVersion}` : 'Force Refresh'}
-                            </Button>
-                          </div>
-                        </div>
-                        {/* Progress bar */}
-                        {totalMods > 0 && (
-                          <div>
-                            <div className="flex justify-between text-xs text-slate-500 mb-1">
-                              <span>{readyMods}/{totalMods} mods ready for {targetVersion}</span>
-                              <span className="font-mono font-bold text-white">{percentReady}%</span>
-                            </div>
-                            <div className="w-full bg-slate-900 rounded-full h-2 overflow-hidden border border-slate-700">
-                              <div className={`h-full transition-all duration-1000 ease-out ${readyMods === totalMods ? 'bg-emerald-500' : 'bg-amber-500'}`} style={{ width: `${percentReady}%` }} />
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Version status table */}
-                        {mods.filter(m => !m.isCustom).length > 0 && (
-                          <div className="rounded border border-slate-700/50 overflow-hidden max-h-64 overflow-y-auto">
-                            {mods.filter(m => !m.isCustom).map(mod => (
-                              <div
-                                key={mod.id}
-                                className={`flex items-center gap-3 px-3 py-2 text-xs border-b border-slate-700/30 last:border-0 ${mod.target_version_number === 'None Found' ? 'bg-red-900/15' : ''}`}
-                              >
-                                {mod.icon_url && <img src={mod.icon_url} className="w-4 h-4 rounded shrink-0" />}
-                                <span className={`flex-1 font-medium truncate ${mod.target_version_number === 'None Found' ? 'text-red-300' : 'text-slate-300'}`}>{mod.title}</span>
-                                <span className="font-mono text-slate-500 shrink-0">{mod.installed_version || '—'}</span>
-                                <Icon name="arrow-right" className="w-3 h-3 text-slate-600 shrink-0" />
-                                <span className={`font-mono font-bold shrink-0 ${mod.target_version_number === 'None Found' ? 'text-red-400' : 'text-emerald-400'}`}>
-                                  {mod.target_version_number === 'None Found' ? 'None Found' : mod.target_version_number}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   
@@ -2486,7 +2524,7 @@
                        <h3 className="text-slate-300 font-medium">List is empty</h3>
                      </div>
                   ) : (
-                    <div className="space-y-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                       {sortedMods.map((mod) => (
                         <ModCard
                             key={mod.id}
@@ -2503,11 +2541,11 @@
                             onUpdateNote={handleUpdateNote}
                             currentUser={user}
                             onVote={handleVote}
-                            onToggle={handleToggleMod}
                             onInstall={handleInstallMod}
                             onRemoveFromVM={handleRemoveFromVM}
                             installStatus={installStatus}
                             vmApiUrl={vmApiUrl}
+                            vmDiskFiles={vmDiskFiles}
                             upgradeExpanded={upgradeExpanded}
                         />
                       ))}
