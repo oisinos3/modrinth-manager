@@ -140,8 +140,10 @@
             slate: "bg-slate-700 text-slate-300",
             green: "bg-emerald-900/50 text-emerald-400 border border-emerald-800",
             yellow: "bg-amber-900/50 text-amber-400 border border-amber-800",
-            red: "bg-red-950/80 text-red-300 border border-red-900/50", 
+            red: "bg-red-950/80 text-red-300 border border-red-900/50",
             purple: "bg-purple-900/50 text-purple-400 border border-purple-800",
+            blue: "bg-blue-900/50 text-blue-400 border border-blue-800",
+            cyan: "bg-cyan-900/50 text-cyan-400 border border-cyan-800",
           };
           
           return (
@@ -187,7 +189,20 @@
                 return { id: json.id, slug: json.slug, title: json.title };
             } catch (e) { return null; }
         }
-        
+
+        // Derive a human-readable side label from Modrinth's server_side / client_side fields
+        const getSideLabel = (server_side, client_side) => {
+            if (!server_side && !client_side) return null;
+            const s = server_side || 'unknown';
+            const c = client_side || 'unknown';
+            if (s === 'required' && c === 'unsupported') return { label: 'Server Only', color: 'green' };
+            if (c === 'required' && s === 'unsupported') return { label: 'Client Only', color: 'blue' };
+            if (s === 'required' && c === 'required')    return { label: 'Both Required', color: 'yellow' };
+            if (s === 'required')                         return { label: 'Server', color: 'cyan' };
+            if (c === 'required')                         return { label: 'Client', color: 'purple' };
+            return { label: 'Optional', color: 'slate' };
+        };
+
         // --- Sub-Components ---
 
         const ScriptModal = ({ isOpen, onClose, mods, targetVersion, syncedVersion }) => {
@@ -506,24 +521,25 @@
             );
         };
 
-        // --- NEW: Server Settings Modal ---
-        const SettingsModal = ({ isOpen, onClose, initialName, initialIP, initialUrl, onSave }) => {
+        // --- Server Settings Modal ---
+        const SettingsModal = ({ isOpen, onClose, initialName, initialIP, initialUrl, initialVmUrl, onSave }) => {
             const [name, setName] = useState(initialName);
             const [ip, setIp] = useState(initialIP);
             const [panelUrl, setPanelUrl] = useState(initialUrl || '');
+            const [vmUrl, setVmUrl] = useState(initialVmUrl || '');
 
-            // Update local state when props change (e.g. data load)
             useEffect(() => {
                 setName(initialName);
                 setIp(initialIP);
                 setPanelUrl(initialUrl || '');
-            }, [initialName, initialIP, initialUrl, isOpen]);
+                setVmUrl(initialVmUrl || '');
+            }, [initialName, initialIP, initialUrl, initialVmUrl, isOpen]);
 
             if (!isOpen) return null;
 
             const handleSubmit = (e) => {
                 e.preventDefault();
-                onSave(name, ip, panelUrl);
+                onSave(name, ip, panelUrl, vmUrl);
                 onClose();
             }
 
@@ -544,9 +560,14 @@
                                 <input type="text" value={ip} onChange={e => setIp(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded p-2 text-white font-mono text-sm focus:border-emerald-500 outline-none" placeholder="play.myserver.com" />
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">PloxHost/Panel URL</label>
-                                <input type="text" value={panelUrl} onChange={e => setPanelUrl(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded p-2 text-white font-mono text-sm focus:border-emerald-500 outline-none" placeholder="https://panel.ploxhost.com/server/..." />
-                                <p className="text-[10px] text-slate-500 mt-1">Paste the link to your PloxHost console here to add a quick-access button.</p>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Crafty/Panel URL</label>
+                                <input type="text" value={panelUrl} onChange={e => setPanelUrl(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded p-2 text-white font-mono text-sm focus:border-emerald-500 outline-none" placeholder="https://your-crafty-url:8443" />
+                                <p className="text-[10px] text-slate-500 mt-1">Quick-access button to your Crafty console.</p>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Oracle VM API URL</label>
+                                <input type="text" value={vmUrl} onChange={e => setVmUrl(e.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded p-2 text-white font-mono text-sm focus:border-emerald-500 outline-none" placeholder="http://your-vm-ip:3000" />
+                                <p className="text-[10px] text-slate-500 mt-1">URL of the mod-manager API running on your Oracle VM. Enables direct install.</p>
                             </div>
                             <Button type="submit" variant="primary" className="w-full mt-2">Save Settings</Button>
                         </form>
@@ -662,11 +683,13 @@
             );
         };
 
-        const ModCard = ({ mod, allMods, isCheckingUpdates, accessLevel, activeTab, onVersionChange, onApprove, onRemove, onAddDependency, onEditDependency, isModal = false, onUpdateNote, currentUser, onVote, onToggle }) => {
-            
+        const ModCard = ({ mod, allMods, isCheckingUpdates, accessLevel, activeTab, onVersionChange, onApprove, onRemove, onAddDependency, onEditDependency, isModal = false, onUpdateNote, currentUser, onVote, onToggle, onInstall, onRemoveFromVM, installStatus = {}, vmApiUrl }) => {
+
             const isLocked = mod.note && mod.noteAuthorId && mod.noteAuthorId !== currentUser?.uid && accessLevel !== 'admin';
-            // NEW: Enabled logic (default to true if undefined)
-            const isEnabled = mod.enabled !== false; 
+            const isEnabled = mod.enabled !== false;
+            const sideLabel = getSideLabel(mod.server_side, mod.client_side);
+            const modInstallState = installStatus[mod.id];
+            const canDirectInstall = vmApiUrl && activeTab === 'active' && !mod.isCustom && mod.primary_file_url && mod.target_version_number !== 'None Found';
             
             const upvotes = mod.upvotes || [];
             const downvotes = mod.downvotes || [];
@@ -699,9 +722,9 @@
                             </div>
                         )}
                         <div>
-                        <div className="flex items-center gap-3 mb-1">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
                             <h3 className="font-bold text-lg text-slate-200">{mod.title}</h3>
-                            {/* Status Badge Logic */}
+                            {/* Status Badge */}
                             {!isEnabled ? (
                                 <Badge color="slate">Disabled</Badge>
                             ) : mod.isCustom ? (
@@ -709,6 +732,8 @@
                             ) : (
                                 mod.target_version_number === 'None Found' ? <Badge color="red">Outdated</Badge> : <Badge color="green">Ready</Badge>
                             )}
+                            {/* Side tag */}
+                            {sideLabel && <Badge color={sideLabel.color}>{sideLabel.label}</Badge>}
                             <a href={mod.project_url || '#'} target="_blank" rel="noreferrer" className="text-slate-500 hover:text-emerald-400 transition-colors"><Icon name="external-link" className="w-4 h-4" /></a>
                         </div>
                         <p className="text-sm text-slate-400 line-clamp-1 max-w-xl">{mod.description}</p>
@@ -766,17 +791,46 @@
                     
                     {/* Actions */}
                     <div className="flex items-center gap-6">
-                        
+
+                        {/* Direct VM Install Button */}
+                        {canDirectInstall && accessLevel === 'admin' && (
+                            <button
+                                onClick={() => modInstallState === 'done' ? onRemoveFromVM(mod) : onInstall(mod)}
+                                disabled={modInstallState === 'installing' || modInstallState === 'removing'}
+                                title={modInstallState === 'done' ? 'Remove from VM' : 'Install directly to VM'}
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-bold transition-all border ${
+                                    modInstallState === 'installing' ? 'bg-emerald-900/20 border-emerald-700 text-emerald-400 cursor-wait' :
+                                    modInstallState === 'done'       ? 'bg-emerald-700 border-emerald-600 text-white hover:bg-red-900/40 hover:border-red-700 hover:text-red-400' :
+                                    modInstallState === 'error'      ? 'bg-red-900/30 border-red-700 text-red-400' :
+                                    modInstallState === 'removed'    ? 'bg-slate-700 border-slate-600 text-slate-300' :
+                                    'bg-slate-900 border-slate-600 text-slate-300 hover:bg-emerald-900/30 hover:border-emerald-600 hover:text-emerald-400'
+                                }`}
+                            >
+                                <Icon name={
+                                    modInstallState === 'installing' ? 'arrows-rotate' :
+                                    modInstallState === 'done'       ? 'circle-check' :
+                                    modInstallState === 'error'      ? 'triangle-exclamation' :
+                                    modInstallState === 'removed'    ? 'trash-can' :
+                                    'cloud-arrow-down'
+                                } className={modInstallState === 'installing' ? 'animate-spin' : ''} />
+                                {modInstallState === 'installing' ? 'Installing...' :
+                                 modInstallState === 'done'       ? 'Installed' :
+                                 modInstallState === 'error'      ? 'Failed' :
+                                 modInstallState === 'removed'    ? 'Removed' :
+                                 'Install to VM'}
+                            </button>
+                        )}
+
                         {/* Toggle Button (Admin & Active Only) */}
                         {accessLevel === 'admin' && activeTab === 'active' && (
-                            <button 
-                                onClick={() => onToggle(mod.id)} 
+                            <button
+                                onClick={() => onToggle(mod.id)}
                                 className="p-2 rounded hover:bg-slate-700/50 transition-colors mr-2"
                                 title={isEnabled ? "Disable Mod" : "Enable Mod"}
                             >
-                                <Icon 
-                                    name={isEnabled ? "toggle-on" : "toggle-off"} 
-                                    className={`text-4xl transition-colors ${isEnabled ? "text-emerald-400" : "text-slate-500"}`} 
+                                <Icon
+                                    name={isEnabled ? "toggle-on" : "toggle-off"}
+                                    className={`text-4xl transition-colors ${isEnabled ? "text-emerald-400" : "text-slate-500"}`}
                                 />
                             </button>
                         )}
@@ -845,13 +899,13 @@
                              You are editing a library mod. This mod is hidden from the main list to keep it clean.
                          </p>
                          
-                         <ModCard 
-                            mod={mod} 
+                         <ModCard
+                            mod={mod}
                             allMods={allMods}
                             isModal={true}
                             onRemove={(id) => {
-                                 onRemove(id); // Call standard remove
-                                 onClose(); // Force close modal since item is gone
+                                 onRemove(id);
+                                 onClose();
                             }}
                             onUpdateNote={onUpdateNote}
                             {...props}
@@ -908,10 +962,18 @@
           // Settings Modal
           const [showSettingsModal, setShowSettingsModal] = useState(false);
 
-          // --- Search State ---
+          // --- Search State (Add Mod panel) ---
           const [searchResults, setSearchResults] = useState([]);
           const [showDropdown, setShowDropdown] = useState(false);
           const debouncedSearch = useDebounce(modInput, 300);
+
+          // --- Filter State (search within installed list) ---
+          const [filterQuery, setFilterQuery] = useState('');
+          // --- Add Mod panel toggle ---
+          const [showAddMod, setShowAddMod] = useState(false);
+          // --- VM Direct Install ---
+          const [vmApiUrl, setVmApiUrl] = useState('');
+          const [installStatus, setInstallStatus] = useState({}); // { modId: 'installing' | 'done' | 'error' }
 
           // --- Edit IP State ---
           const [isEditingIP, setIsEditingIP] = useState(false);
@@ -1061,7 +1123,8 @@
                 setTargetVersion(data.targetVersion || '26.1.1');
                 setServerName(data.serverName || 'My Server');
                 setServerIP(data.serverIP || '');
-                setPanelUrl(data.panelUrl || ''); // Load panel URL
+                setPanelUrl(data.panelUrl || '');
+                setVmApiUrl(data.vmApiUrl || '');
                 // Load synced version from DB, fallback to serverVersion for legacy data
                 setSyncedVersion(data.syncedVersion || data.serverVersion || '26.1');
                 setIsSyncing(false);
@@ -1324,6 +1387,8 @@
                 title: info.title,
                 icon_url: info.icon_url,
                 description: info.description,
+                server_side: info.server_side || null,
+                client_side: info.client_side || null,
                 installed_version: latestServer ? latestServer.version_number : 'Not Installed',
                 server_candidates: serverCandidates.map(v => v.version_number),
                 target_version_number: latestTarget ? latestTarget.version_number : 'None Found',
@@ -1334,9 +1399,9 @@
                 updated_at: new Date().toISOString(),
                 status: latestTarget ? 'ready' : 'missing',
                 note: '',
-                upvotes: [], 
+                upvotes: [],
                 downvotes: [],
-                enabled: true // Default to enabled
+                enabled: true
               };
 
               const targetList = overrideTab || activeTab;
@@ -1430,6 +1495,47 @@
                 return { ...m, upvotes: ups, downvotes: downs };
             });
             await saveToServer(null, updatedWishlist);
+          };
+
+          // --- Direct VM Install ---
+          const handleInstallMod = async (mod) => {
+            if (!vmApiUrl) return;
+            const url = mod.primary_file_url;
+            if (!url) { setError('No download URL for this mod. Run Force Refresh first.'); return; }
+
+            const filename = `${mod.slug}-${mod.target_version_number}.jar`;
+            setInstallStatus(prev => ({ ...prev, [mod.id]: 'installing' }));
+
+            try {
+              const res = await fetch(`${vmApiUrl}/install`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url, filename, slug: mod.slug })
+              });
+              if (!res.ok) throw new Error(`VM responded ${res.status}`);
+              setInstallStatus(prev => ({ ...prev, [mod.id]: 'done' }));
+              setTimeout(() => setInstallStatus(prev => { const n = {...prev}; delete n[mod.id]; return n; }), 3000);
+            } catch (err) {
+              console.error('Install failed', err);
+              setInstallStatus(prev => ({ ...prev, [mod.id]: 'error' }));
+              setTimeout(() => setInstallStatus(prev => { const n = {...prev}; delete n[mod.id]; return n; }), 4000);
+            }
+          };
+
+          const handleRemoveFromVM = async (mod) => {
+            if (!vmApiUrl) return;
+            const filename = `${mod.slug}-${mod.target_version_number}.jar`;
+            setInstallStatus(prev => ({ ...prev, [mod.id]: 'removing' }));
+            try {
+              const res = await fetch(`${vmApiUrl}/remove/${encodeURIComponent(filename)}`, { method: 'DELETE' });
+              if (!res.ok) throw new Error(`VM responded ${res.status}`);
+              setInstallStatus(prev => ({ ...prev, [mod.id]: 'removed' }));
+              setTimeout(() => setInstallStatus(prev => { const n = {...prev}; delete n[mod.id]; return n; }), 2000);
+            } catch (err) {
+              console.error('Remove failed', err);
+              setInstallStatus(prev => ({ ...prev, [mod.id]: 'error' }));
+              setTimeout(() => setInstallStatus(prev => { const n = {...prev}; delete n[mod.id]; return n; }), 4000);
+            }
           };
 
           const handleUpdateNote = async (modId, newNote, authorId) => {
@@ -1529,14 +1635,15 @@
               }
           };
 
-          const handleSaveSettings = async (newName, newIp, newUrl) => {
+          const handleSaveSettings = async (newName, newIp, newUrl, newVmUrl) => {
                if (!serverDocId || accessLevel !== 'admin') return;
                try {
                   const docRef = db.collection('artifacts').doc(storageAppId).collection('public').doc('data').collection('servers').doc(serverDocId);
                   await docRef.update({
                       serverName: newName.trim(),
                       serverIP: newIp.trim(),
-                      panelUrl: newUrl.trim()
+                      panelUrl: newUrl.trim(),
+                      vmApiUrl: newVmUrl.trim()
                   });
                } catch(e) {
                    console.error("Failed to save settings:", e);
@@ -1829,11 +1936,12 @@
             if (filter === 'ready' && mod.target_version_number === 'None Found') return false;
             if (filter === 'missing' && mod.target_version_number !== 'None Found') return false;
             if (filter === 'custom' && !mod.isCustom) return false;
-            
-            if (activeTab === 'active' && !showLibraries && activeDependencyIds.has(mod.id)) {
-                return false;
+            if (activeTab === 'active' && !showLibraries && activeDependencyIds.has(mod.id)) return false;
+            // Text filter (search within installed list)
+            if (filterQuery) {
+              const q = filterQuery.toLowerCase();
+              if (!mod.title.toLowerCase().includes(q) && !mod.slug.toLowerCase().includes(q)) return false;
             }
-            
             return true;
           });
 
@@ -1880,6 +1988,7 @@
                   initialName={serverName}
                   initialIP={serverIP}
                   initialUrl={panelUrl}
+                  initialVmUrl={vmApiUrl}
                   onSave={handleSaveSettings}
               />
 
@@ -2083,101 +2192,117 @@
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   
-                  {/* Add Mod Form */}
-                  <Card className="md:col-span-2 p-5 overflow-visible"> 
-                     {/* Disable Add to Server if User, Allow Add to Wishlist always */}
-                     {(activeTab === 'active' && accessLevel === 'user') ? (
-                         <div className="h-full flex flex-col items-center justify-center text-slate-500 py-4">
-                            <Icon name="lock" className="w-8 h-8 mb-2 opacity-50" />
-                            <p className="text-sm">Only Admins can add directly to Server List.</p>
-                            <p className="text-xs">Switch to Wishlist to make a request.</p>
-                         </div>
-                     ) : (
-                        <>
-                          <h2 className={`text-sm font-bold uppercase tracking-wider mb-4 flex items-center gap-2 ${activeTab === 'active' ? 'text-emerald-400' : 'text-purple-400'}`}>
-                            <Icon name="magnifying-glass" className="w-4 h-4" /> Search {activeTab === 'active' ? 'Server Mods' : 'Wishlist'}
-                          </h2>
-                          <div className="flex gap-3 relative">
-                            <div className="flex-1 relative group">
-                              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <Icon name="search" className="text-slate-500" />
-                              </div>
-                              <input 
-                                type="text" 
-                                value={modInput}
-                                onChange={(e) => {
-                                    setModInput(e.target.value);
-                                    if(e.target.value.length < 2) setShowDropdown(false);
-                                }}
-                                onFocus={() => {
-                                    if(searchResults.length > 0) setShowDropdown(true);
-                                }}
-                                onBlur={() => {
-                                    // Delay hiding to allow click event on dropdown items
-                                    setTimeout(() => setShowDropdown(false), 200);
-                                }}
-                                placeholder="Search mods (e.g. JEI, Sodium) or paste URL..."
-                                className="w-full bg-slate-900 border border-slate-700 rounded-lg pl-10 pr-4 py-3 text-slate-200 focus:outline-none focus:border-emerald-500 placeholder:text-slate-600 transition-all"
-                                autoComplete="off"
-                              />
-                              
-                              {/* Search Dropdown */}
-                              {showDropdown && searchResults.length > 0 && (
-                                  <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-600 rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-                                      <div className="p-2 bg-slate-900/50 border-b border-slate-700">
-                                          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-2">Modrinth Results</p>
-                                      </div>
-                                      {searchResults.map((result) => (
-                                          <button
-                                              key={result.slug}
-                                              className="w-full text-left p-3 hover:bg-slate-700 transition-colors flex items-start gap-3 border-b border-slate-700/50 last:border-0"
-                                              onMouseDown={(e) => {
-                                                  e.preventDefault(); // Prevent blur
-                                                  handleAddMod(null, result.slug);
-                                              }}
-                                          >
-                                              {result.icon_url ? (
-                                                  <img src={result.icon_url} className="w-8 h-8 rounded bg-slate-900 object-cover shrink-0" />
-                                              ) : (
-                                                  <div className="w-8 h-8 rounded bg-slate-900 flex items-center justify-center shrink-0">
-                                                      <Icon name="cube" className="w-4 h-4 text-slate-500" />
-                                                  </div>
-                                              )}
-                                              <div className="min-w-0">
-                                                  <div className="flex items-center gap-2">
-                                                      <span className="font-bold text-slate-200 text-sm truncate">{result.title}</span>
-                                                      <span className="text-[10px] bg-slate-900 text-slate-500 px-1.5 rounded">{result.author}</span>
-                                                  </div>
-                                                  <p className="text-xs text-slate-400 line-clamp-1">{result.description}</p>
-                                              </div>
-                                          </button>
-                                      ))}
-                                  </div>
-                              )}
+                  {/* Search / Add Mod Card */}
+                  <Card className="md:col-span-2 p-5 overflow-visible">
+                    {/* ── Row 1: Filter installed mods ── */}
+                    <div className="flex gap-3 items-center mb-3">
+                      <div className="flex-1 relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <Icon name="magnifying-glass" className="text-slate-500" />
+                        </div>
+                        <input
+                          type="text"
+                          value={filterQuery}
+                          onChange={e => setFilterQuery(e.target.value)}
+                          placeholder={`Filter ${activeTab === 'active' ? 'installed mods' : 'wishlist'}…`}
+                          className="w-full bg-slate-900 border border-slate-700 rounded-lg pl-10 pr-4 py-2.5 text-slate-200 focus:outline-none focus:border-slate-500 placeholder:text-slate-600 transition-all text-sm"
+                          autoComplete="off"
+                        />
+                        {filterQuery && (
+                          <button onClick={() => setFilterQuery('')} className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-500 hover:text-white">
+                            <Icon name="xmark" className="w-3 h-3" />
+                          </button>
+                        )}
+                      </div>
 
-                              {error && <div className="absolute -bottom-6 left-0 text-xs text-red-400 flex items-center gap-1"><Icon name="circle-exclamation" className="w-3 h-3" /> {error}</div>}
+                      {/* + Add Mod button (admin always, users only on wishlist) */}
+                      {(accessLevel === 'admin' || activeTab === 'wishlist') && (
+                        <Button
+                          onClick={() => setShowAddMod(v => !v)}
+                          variant={showAddMod ? 'primary' : 'outline'}
+                          className="gap-2 whitespace-nowrap"
+                          title="Search Modrinth and add a mod"
+                        >
+                          <Icon name={showAddMod ? 'xmark' : 'plus'} className="w-4 h-4" />
+                          {showAddMod ? 'Close' : 'Add Mod'}
+                        </Button>
+                      )}
+
+                      {/* Custom mod upload button */}
+                      {(accessLevel === 'admin') && (
+                        <Button onClick={() => setShowCustomModal(true)} variant="outline" title="Upload custom JAR" className="px-3">
+                          <Icon name="file-arrow-up" className="w-4 h-4 text-purple-400" />
+                        </Button>
+                      )}
+                    </div>
+
+                    {/* ── Row 2: Expandable Modrinth search (add mod) ── */}
+                    {showAddMod && (
+                      <div className="mt-1 pt-3 border-t border-slate-700/60 animate-in fade-in slide-in-from-top-1 duration-150">
+                        <p className={`text-[10px] font-bold uppercase tracking-wider mb-2 ${activeTab === 'active' ? 'text-emerald-400' : 'text-purple-400'}`}>
+                          Search Modrinth — adding to {activeTab === 'active' ? 'Server Mods' : 'Wishlist'}
+                        </p>
+                        <div className="flex gap-2 relative">
+                          <div className="flex-1 relative">
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                              <Icon name="search" className="text-slate-500" />
                             </div>
-                            
-                            <Button 
-                                onClick={() => setShowCustomModal(true)} 
-                                variant="outline" 
-                                title="Add Custom Mod"
-                                className="px-3"
-                            >
-                                <Icon name="plus" className="w-4 h-4" />
-                            </Button>
+                            <input
+                              type="text"
+                              value={modInput}
+                              onChange={e => { setModInput(e.target.value); if (e.target.value.length < 2) setShowDropdown(false); }}
+                              onFocus={() => { if (searchResults.length > 0) setShowDropdown(true); }}
+                              onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
+                              placeholder="Search by name or paste Modrinth URL…"
+                              className={`w-full bg-slate-950 border rounded-lg pl-10 pr-4 py-2.5 text-slate-200 focus:outline-none placeholder:text-slate-600 transition-all text-sm ${activeTab === 'active' ? 'border-slate-700 focus:border-emerald-500' : 'border-slate-700 focus:border-purple-500'}`}
+                              autoComplete="off"
+                              autoFocus
+                            />
 
-                            <Button 
-                                onClick={(e) => handleAddMod(e)} 
-                                disabled={loading || !modInput} 
-                                variant={activeTab === 'active' ? 'primary' : 'purple'}
-                                className="px-6"
-                            >
-                              {loading ? <Icon name="arrows-rotate" className="w-4 h-4 animate-spin" /> : <Icon name="plus" className="w-4 h-4" />}
-                            </Button>
+                            {/* Modrinth search dropdown */}
+                            {showDropdown && searchResults.length > 0 && (
+                              <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-600 rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                                <div className="p-2 bg-slate-900/50 border-b border-slate-700">
+                                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-2">Modrinth Results</p>
+                                </div>
+                                {searchResults.map(result => (
+                                  <button
+                                    key={result.slug}
+                                    className="w-full text-left p-3 hover:bg-slate-700 transition-colors flex items-start gap-3 border-b border-slate-700/50 last:border-0"
+                                    onMouseDown={e => { e.preventDefault(); handleAddMod(null, result.slug); setShowAddMod(false); }}
+                                  >
+                                    {result.icon_url ? (
+                                      <img src={result.icon_url} className="w-8 h-8 rounded bg-slate-900 object-cover shrink-0" />
+                                    ) : (
+                                      <div className="w-8 h-8 rounded bg-slate-900 flex items-center justify-center shrink-0">
+                                        <Icon name="cube" className="w-4 h-4 text-slate-500" />
+                                      </div>
+                                    )}
+                                    <div className="min-w-0">
+                                      <div className="flex items-center gap-2">
+                                        <span className="font-bold text-slate-200 text-sm truncate">{result.title}</span>
+                                        <span className="text-[10px] bg-slate-900 text-slate-500 px-1.5 rounded">{result.author}</span>
+                                      </div>
+                                      <p className="text-xs text-slate-400 line-clamp-1">{result.description}</p>
+                                    </div>
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                            {error && <div className="absolute -bottom-5 left-0 text-xs text-red-400 flex items-center gap-1"><Icon name="circle-exclamation" className="w-3 h-3" /> {error}</div>}
                           </div>
-                        </>
-                     )}
+
+                          <Button
+                            onClick={e => { handleAddMod(e); setShowAddMod(false); }}
+                            disabled={loading || !modInput}
+                            variant={activeTab === 'active' ? 'primary' : 'purple'}
+                            className="px-5"
+                          >
+                            {loading ? <Icon name="arrows-rotate" className="w-4 h-4 animate-spin" /> : <Icon name="plus" className="w-4 h-4" />}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </Card>
 
                   {/* Controls */}
@@ -2189,33 +2314,33 @@
                             {copyFeedback ? <Icon name="circle-check" className="w-3 h-3 text-emerald-400" /> : <Icon name="link" className="w-3 h-3" />}
                             {copyFeedback ? 'Copied Link!' : 'Copy Invite Link'}
                           </Button>
-                          
+
                           {/* Admin Only Download Script */}
                           {accessLevel === 'admin' && activeTab === 'active' && (
                              <Button variant="outline" onClick={() => setShowScriptModal(true)} className="text-xs py-2">
                                  <Icon name="terminal" className="w-3 h-3" /> Get Download Script
                              </Button>
                           )}
-                          
+
                           {/* Export (Available to ALL users) */}
                           <Button variant="outline" onClick={handleExportBackup} className="text-xs py-2">
                               <Icon name="file-export" className="w-3 h-3" /> Export Backup
                           </Button>
-                          
+
                           {/* Import (Available only to ADMIN) */}
                           {accessLevel === 'admin' && (
                            <Button variant="outline" onClick={triggerImport} className="text-xs py-2">
                                <Icon name="file-import" className="w-3 h-3" /> Import Backup
-                               <input 
-                                    type="file" 
-                                    ref={fileInputRef} 
-                                    onChange={handleImportBackup} 
+                               <input
+                                    type="file"
+                                    ref={fileInputRef}
+                                    onChange={handleImportBackup}
                                     style={{ display: 'none' }}
                                     accept=".json"
                                />
                            </Button>
                           )}
-                           
+
                            {importStatus && (
                               <div className={`col-span-full text-xs font-medium px-2 py-1 rounded text-center ${importStatus.type === 'success' ? 'bg-emerald-900/50 text-emerald-300' : 'bg-red-900/50 text-red-300'}`}>
                                   {importStatus.message}
@@ -2223,10 +2348,10 @@
                            )}
                        </div>
                      </div>
-                     <Button 
-                        variant={isSyncMismatch ? 'primary' : 'secondary'} 
-                        onClick={() => checkAllUpdates(activeTab === 'active' ? mods : wishlist, activeTab)} 
-                        disabled={checkingUpdates || totalMods === 0} 
+                     <Button
+                        variant={isSyncMismatch ? 'primary' : 'secondary'}
+                        onClick={() => checkAllUpdates(activeTab === 'active' ? mods : wishlist, activeTab)}
+                        disabled={checkingUpdates || totalMods === 0}
                         className="w-full mt-auto relative overflow-hidden"
                      >
                        {isSyncMismatch && <div className="absolute inset-0 bg-amber-500/20 animate-pulse pointer-events-none"></div>}
@@ -2251,10 +2376,10 @@
                         <button onClick={() => setFilter('custom')} className={`px-3 py-1 rounded text-xs font-medium transition-all ${filter === 'custom' ? 'bg-purple-900/50 text-purple-400' : 'text-slate-400 hover:text-white'}`}>Custom</button>
                       </div>
                     </div>
-                    
+
                     {activeTab === 'active' && (
-                        <button 
-                            onClick={() => setShowLibraries(!showLibraries)} 
+                        <button
+                            onClick={() => setShowLibraries(!showLibraries)}
                             className="flex items-center gap-2 text-xs font-medium text-slate-500 hover:text-white transition-colors px-3 py-1 rounded-md hover:bg-slate-800"
                         >
                             {showLibraries ? <Icon name="eye" className="w-3 h-3 text-emerald-500" /> : <Icon name="eye-slash" className="w-3 h-3" />}
@@ -2271,7 +2396,7 @@
                   ) : (
                     <div className="space-y-3">
                       {filteredMods.map((mod) => (
-                        <ModCard 
+                        <ModCard
                             key={mod.id}
                             mod={mod}
                             allMods={mods}
@@ -2287,6 +2412,10 @@
                             currentUser={user}
                             onVote={handleVote}
                             onToggle={handleToggleMod}
+                            onInstall={handleInstallMod}
+                            onRemoveFromVM={handleRemoveFromVM}
+                            installStatus={installStatus}
+                            vmApiUrl={vmApiUrl}
                         />
                       ))}
                       {filteredMods.length === 0 && totalMods > 0 && (
@@ -2303,7 +2432,7 @@
             </div>
           );
         }
-        
+
         // --- FINAL RENDER CALL ---
         ReactDOM.createRoot(document.getElementById('root')).render(
             <React.StrictMode>
