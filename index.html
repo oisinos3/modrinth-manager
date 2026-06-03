@@ -1498,6 +1498,9 @@
           };
 
           // --- Direct VM Install ---
+          // Strip trailing slash so saved URLs like "https://host/" don't become "//install"
+          const vmBase = () => vmApiUrl.replace(/\/+$/, '');
+
           const handleInstallMod = async (mod) => {
             if (!vmApiUrl) return;
             const url = mod.primary_file_url;
@@ -1507,7 +1510,7 @@
             setInstallStatus(prev => ({ ...prev, [mod.id]: 'installing' }));
 
             try {
-              const res = await fetch(`${vmApiUrl}/install`, {
+              const res = await fetch(`${vmBase()}/install`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ url, filename, slug: mod.slug })
@@ -1527,7 +1530,7 @@
             const filename = `${mod.slug}-${mod.target_version_number}.jar`;
             setInstallStatus(prev => ({ ...prev, [mod.id]: 'removing' }));
             try {
-              const res = await fetch(`${vmApiUrl}/remove/${encodeURIComponent(filename)}`, { method: 'DELETE' });
+              const res = await fetch(`${vmBase()}/remove/${encodeURIComponent(filename)}`, { method: 'DELETE' });
               if (!res.ok) throw new Error(`VM responded ${res.status}`);
               setInstallStatus(prev => ({ ...prev, [mod.id]: 'removed' }));
               setTimeout(() => setInstallStatus(prev => { const n = {...prev}; delete n[mod.id]; return n; }), 2000);
