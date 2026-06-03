@@ -683,7 +683,7 @@
             );
         };
 
-        const ModCard = ({ mod, allMods, isCheckingUpdates, accessLevel, activeTab, onVersionChange, onApprove, onRemove, onAddDependency, onEditDependency, isModal = false, onUpdateNote, currentUser, onVote, onToggle, onInstall, onRemoveFromVM, installStatus = {}, vmApiUrl }) => {
+        const ModCard = ({ mod, allMods, isCheckingUpdates, accessLevel, activeTab, onVersionChange, onApprove, onRemove, onAddDependency, onEditDependency, isModal = false, onUpdateNote, currentUser, onVote, onToggle, onInstall, onRemoveFromVM, installStatus = {}, vmApiUrl, upgradeExpanded = false }) => {
 
             const isLocked = mod.note && mod.noteAuthorId && mod.noteAuthorId !== currentUser?.uid && accessLevel !== 'admin';
             const isEnabled = mod.enabled !== false;
@@ -749,11 +749,11 @@
                         </div>
                     </div>
 
-                    {/* Versions Dropdown - Disabled if User & Active Tab */}
-                    {activeTab === 'active' && (
+                    {/* Versions — only visible when Upgrade section is open */}
+                    {activeTab === 'active' && upgradeExpanded && (
                         mod.isCustom ? (
                             <div className="flex items-center justify-center bg-slate-900/50 p-3 rounded-lg border border-slate-700/50 min-w-[200px] text-slate-400 text-sm font-mono gap-2">
-                                <Icon name="file-arrow-up" className="text-purple-500" /> 
+                                <Icon name="file-arrow-up" className="text-purple-500" />
                                 <span>{mod.customUrl ? 'URL Linked' : 'Manual Install'}</span>
                             </div>
                         ) : (
@@ -761,14 +761,14 @@
                                 <div className="flex flex-col items-end min-w-[140px]">
                                     <span className="text-[10px] text-slate-500 font-bold uppercase mb-1">Installed</span>
                                     <div className="relative w-full">
-                                    <select 
+                                    <select
                                         value={mod.installed_version}
                                         onChange={(e) => onVersionChange(mod.id, e.target.value)}
-                                        disabled={accessLevel === 'user'} 
+                                        disabled={accessLevel === 'user'}
                                         className="w-full appearance-none bg-slate-800 border border-slate-600 hover:border-slate-500 text-slate-300 text-sm font-mono py-1 pl-2 pr-6 rounded cursor-pointer focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
-                                        {!mod.server_candidates || mod.server_candidates.length === 0 
-                                        ? <option>No Ver</option> 
+                                        {!mod.server_candidates || mod.server_candidates.length === 0
+                                        ? <option>No Ver</option>
                                         : [...new Set(mod.server_candidates)].map(v => <option key={v} value={v}>{v}</option>)
                                         }
                                     </select>
@@ -776,7 +776,6 @@
                                     </div>
                                 </div>
                                 <Icon name="arrow-right" className="w-4 h-4 text-slate-600" />
-                                {/* Target Version Display (Read Only) */}
                                 <div className="flex flex-col items-start min-w-[140px]">
                                     <span className="text-[10px] text-emerald-500/70 font-bold uppercase mb-1">Target</span>
                                     <div className="flex items-center gap-2 h-[28px]">
@@ -915,6 +914,113 @@
             );
         };
 
+        // --- VM Sync Modal ---
+        const VmSyncModal = ({ isOpen, onClose, loading, data, mods }) => {
+          if (!isOpen) return null;
+
+          let tracked = [], missingFromDisk = [], untrackedOnDisk = [];
+
+          if (data && data.files) {
+            const diskFiles = data.files;
+            // For each tracked mod, check if a matching jar is on disk
+            mods.forEach(mod => {
+              if (mod.isCustom) return;
+              const onDisk = diskFiles.some(f => f.startsWith(mod.slug + '-') || f === mod.slug + '.jar');
+              if (onDisk) tracked.push({ mod, file: diskFiles.find(f => f.startsWith(mod.slug + '-')) });
+              else missingFromDisk.push(mod);
+            });
+            // Files on disk that don't match any tracked mod
+            diskFiles.forEach(file => {
+              const matched = mods.some(mod => file.startsWith(mod.slug + '-') || file === mod.slug + '.jar');
+              if (!matched) untrackedOnDisk.push(file);
+            });
+          }
+
+          return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+              <div className="bg-slate-900 border border-slate-700 rounded-xl w-full max-w-2xl p-6 shadow-2xl max-h-[85vh] flex flex-col">
+                <div className="flex justify-between items-center mb-5">
+                  <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                    <Icon name="hard-drive" className="text-emerald-400" /> VM Sync
+                  </h3>
+                  <button onClick={onClose} className="text-slate-400 hover:text-white"><Icon name="xmark" className="w-5 h-5" /></button>
+                </div>
+
+                {loading && (
+                  <div className="flex items-center justify-center py-12 text-slate-400">
+                    <Icon name="arrows-rotate" className="w-6 h-6 animate-spin mr-3" /> Fetching from VM…
+                  </div>
+                )}
+
+                {data && data.error && (
+                  <div className="bg-red-900/20 border border-red-800 rounded p-4 text-red-400 text-sm">{data.error}</div>
+                )}
+
+                {data && data.files && (
+                  <div className="space-y-5 overflow-y-auto">
+                    {/* Tracked & on disk */}
+                    <div>
+                      <h4 className="text-xs font-bold text-emerald-400 uppercase tracking-wider mb-2 flex items-center gap-2">
+                        <Icon name="circle-check" /> Tracked & installed ({tracked.length})
+                      </h4>
+                      {tracked.length === 0 ? <p className="text-slate-600 text-xs">None</p> : (
+                        <div className="space-y-1">
+                          {tracked.map(({ mod, file }) => (
+                            <div key={mod.id} className="flex items-center gap-3 py-1 px-2 rounded bg-slate-800/50 text-sm">
+                              {mod.icon_url && <img src={mod.icon_url} className="w-5 h-5 rounded" />}
+                              <span className="text-slate-200 font-medium flex-1">{mod.title}</span>
+                              <span className="text-slate-500 font-mono text-xs truncate max-w-[200px]">{file}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Tracked but missing from disk */}
+                    {missingFromDisk.length > 0 && (
+                      <div>
+                        <h4 className="text-xs font-bold text-amber-400 uppercase tracking-wider mb-2 flex items-center gap-2">
+                          <Icon name="triangle-exclamation" /> In list but not on disk ({missingFromDisk.length})
+                        </h4>
+                        <div className="space-y-1">
+                          {missingFromDisk.map(mod => (
+                            <div key={mod.id} className="flex items-center gap-3 py-1 px-2 rounded bg-amber-900/10 border border-amber-900/30 text-sm">
+                              {mod.icon_url && <img src={mod.icon_url} className="w-5 h-5 rounded" />}
+                              <span className="text-amber-200 font-medium flex-1">{mod.title}</span>
+                              <span className="text-amber-500 text-xs">Not installed</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* On disk but not tracked */}
+                    {untrackedOnDisk.length > 0 && (
+                      <div>
+                        <h4 className="text-xs font-bold text-blue-400 uppercase tracking-wider mb-2 flex items-center gap-2">
+                          <Icon name="question-circle" /> On disk but not in list ({untrackedOnDisk.length})
+                        </h4>
+                        <div className="space-y-1">
+                          {untrackedOnDisk.map(file => (
+                            <div key={file} className="flex items-center gap-3 py-1 px-2 rounded bg-blue-900/10 border border-blue-900/30 text-sm">
+                              <Icon name="file" className="text-blue-400 text-xs" />
+                              <span className="text-blue-200 font-mono text-xs">{file}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div className="mt-5 pt-4 border-t border-slate-700 flex justify-end">
+                  <Button variant="secondary" onClick={onClose}>Close</Button>
+                </div>
+              </div>
+            </div>
+          );
+        };
+
         // --- Main App ---
 
         function ModManager() {
@@ -974,6 +1080,16 @@
           // --- VM Direct Install ---
           const [vmApiUrl, setVmApiUrl] = useState('');
           const [installStatus, setInstallStatus] = useState({}); // { modId: 'installing' | 'done' | 'error' }
+          // --- Upgrade section ---
+          const [upgradeExpanded, setUpgradeExpanded] = useState(false);
+          // --- Actions overflow menu ---
+          const [showActionsMenu, setShowActionsMenu] = useState(false);
+          // --- VM Sync modal ---
+          const [showVmSyncModal, setShowVmSyncModal] = useState(false);
+          const [vmSyncData, setVmSyncData] = useState(null);
+          const [vmSyncLoading, setVmSyncLoading] = useState(false);
+          // --- Sort ---
+          const [sortBy, setSortBy] = useState('name');
 
           // --- Edit IP State ---
           const [isEditingIP, setIsEditingIP] = useState(false);
@@ -1542,6 +1658,23 @@
             }
           };
 
+          // --- VM Sync ---
+          const handleVmSync = async () => {
+            if (!vmApiUrl) return;
+            setVmSyncLoading(true);
+            setShowVmSyncModal(true);
+            setVmSyncData(null);
+            try {
+              const res = await fetch(`${vmBase()}/mods`, { headers: { 'x-api-key': VM_API_KEY } });
+              const data = await res.json();
+              setVmSyncData(data);
+            } catch (err) {
+              setVmSyncData({ error: err.message });
+            } finally {
+              setVmSyncLoading(false);
+            }
+          };
+
           const handleUpdateNote = async (modId, newNote, authorId) => {
               const updatedWishlist = wishlist.map(m => {
                   if (m.id === modId) {
@@ -1953,6 +2086,14 @@
           const readyMods = visibleList.filter(m => m.target_version_number !== 'None Found').length;
           const percentReady = totalMods === 0 ? 0 : Math.round((readyMods / totalMods) * 100);
 
+          // Apply sort
+          const sortedMods = [...filteredMods].sort((a, b) => {
+            if (sortBy === 'name')     return a.title.localeCompare(b.title);
+            if (sortBy === 'nameDesc') return b.title.localeCompare(a.title);
+            if (sortBy === 'recent')   return filteredMods.indexOf(b) - filteredMods.indexOf(a);
+            return 0;
+          });
+
           return (
             <div className="min-h-screen bg-slate-900 text-slate-100 font-sans selection:bg-emerald-500/30 pb-20">
               <ScriptModal 
@@ -1994,6 +2135,14 @@
                   initialUrl={panelUrl}
                   initialVmUrl={vmApiUrl}
                   onSave={handleSaveSettings}
+              />
+
+              <VmSyncModal
+                  isOpen={showVmSyncModal}
+                  onClose={() => setShowVmSyncModal(false)}
+                  loading={vmSyncLoading}
+                  data={vmSyncData}
+                  mods={mods}
               />
 
               {/* Header */}
@@ -2062,80 +2211,64 @@
                     </div>
                   </div>
                   
-                  <div className="flex items-center gap-4 w-full md:w-auto justify-end">
-                     
-                     {/* --- Admin/User Codes Display (Visible on mid/desktop screens) --- */}
-                     <div className="hidden md:flex items-center gap-4 mr-4">
-                        {/* 1. Admin Code (Admin Only) */}
-                        {accessLevel === 'admin' && (
-                            <div className="flex items-center gap-2 px-3 py-1 bg-emerald-900/20 border border-emerald-900/50 rounded">
-                                <div className="flex flex-col items-end">
-                                    <span className="text-[10px] text-emerald-500 font-bold uppercase leading-none">Admin Code</span>
-                                    <span className="text-xs text-emerald-400 font-mono font-bold tracking-wider leading-none mt-1">{sessionCodes.admin}</span>
-                                </div>
-                                
-                                {adminCodeCopyFeedback ? (
-                                    <Icon name="circle-check" className="w-3 h-3 text-emerald-400" title="Copied!" />
-                                ) : (
-                                    <button onClick={handleCopyAdminCode} className="p-0 bg-transparent border-0 cursor-pointer hover:opacity-80">
-                                        <Icon name="copy" className="w-3 h-3 text-emerald-600" title="Copy Admin Code" />
-                                    </button>
-                                )}
-                            </div>
-                        )}
+                  <div className="flex items-center gap-3 w-full md:w-auto justify-end">
 
-                        {/* 2. User Code (Visible to all connected users) */}
-                        {serverDocId && sessionCodes.user !== '' && (
-                            <div className="flex items-center gap-2 px-3 py-1 bg-slate-900/50 border border-slate-800 rounded">
-                                <div className="flex flex-col items-end">
-                                    <span className="text-[10px] text-slate-500 font-bold uppercase leading-none">User Code</span>
-                                    <span className="text-xs text-slate-300 font-mono font-bold tracking-wider leading-none mt-1">{sessionCodes.user}</span>
-                                </div>
-                                
-                                {userCodeCopyFeedback ? (
-                                    <Icon name="circle-check" className="w-3 h-3 text-emerald-400" title="Copied!" />
-                                ) : (
-                                    <button onClick={handleCopyUserCode} className="p-0 bg-transparent border-0 cursor-pointer hover:opacity-80">
-                                        <Icon name="copy" className="w-3 h-3 text-slate-600 hover:text-white" title="Copy User Code" />
-                                    </button>
-                                )}
-                            </div>
-                        )}
+                    {/* Mod count */}
+                    <span className="hidden md:block text-sm font-mono text-slate-500 mr-2">
+                      {mods.length} mod{mods.length !== 1 ? 's' : ''}
+                    </span>
+
+                    {/* VM Sync button */}
+                    {vmApiUrl && activeTab === 'active' && (
+                      <button
+                        onClick={handleVmSync}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-slate-800 border border-slate-700 hover:border-emerald-600 text-slate-400 hover:text-emerald-400 transition-all text-xs font-medium"
+                        title="Compare mod list vs what's on disk"
+                      >
+                        <Icon name="hard-drive" className="w-3.5 h-3.5" /> VM Sync
+                      </button>
+                    )}
+
+                    {/* ... overflow menu */}
+                    <div className="relative">
+                      <button
+                        onClick={() => setShowActionsMenu(v => !v)}
+                        className="p-2 rounded hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
+                        title="More actions"
+                      >
+                        <Icon name="ellipsis" className="w-4 h-4" />
+                      </button>
+                      {showActionsMenu && (
+                        <div className="absolute right-0 top-full mt-1 w-52 bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-30 py-1">
+                          {/* Access codes */}
+                          {accessLevel === 'admin' && (
+                            <button onClick={() => { handleCopyAdminCode(); setShowActionsMenu(false); }} className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 flex items-center gap-2">
+                              {adminCodeCopyFeedback ? <Icon name="circle-check" className="text-emerald-400" /> : <Icon name="key" />}
+                              {adminCodeCopyFeedback ? 'Copied!' : 'Copy Admin Code'}
+                            </button>
+                          )}
+                          <button onClick={() => { handleCopyUserCode(); setShowActionsMenu(false); }} className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 flex items-center gap-2">
+                            {userCodeCopyFeedback ? <Icon name="circle-check" className="text-emerald-400" /> : <Icon name="link" />}
+                            {userCodeCopyFeedback ? 'Copied!' : 'Copy Invite Link'}
+                          </button>
+                          <div className="border-t border-slate-700 my-1" />
+                          {accessLevel === 'admin' && activeTab === 'active' && (
+                            <button onClick={() => { setShowScriptModal(true); setShowActionsMenu(false); }} className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 flex items-center gap-2">
+                              <Icon name="terminal" /> Download Script
+                            </button>
+                          )}
+                          <button onClick={() => { handleExportBackup(); setShowActionsMenu(false); }} className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 flex items-center gap-2">
+                            <Icon name="file-export" /> Export Backup
+                          </button>
+                          {accessLevel === 'admin' && (
+                            <button onClick={() => { triggerImport(); setShowActionsMenu(false); }} className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 flex items-center gap-2">
+                              <Icon name="file-import" /> Import Backup
+                              <input type="file" ref={fileInputRef} onChange={handleImportBackup} style={{ display: 'none' }} accept=".json" />
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
-                    {/* --- End Codes Display --- */}
-
-                     {/* Version Selectors (Read Only for Users, Edit for Admin) */}
-                     <div className="flex flex-col items-end group">
-                        <label className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">On Server</label>
-                        <div className="relative">
-                          <select 
-                            value={serverVersion} 
-                            onChange={(e) => { setServerVersion(e.target.value); saveVersions(e.target.value, targetVersion); }}
-                            disabled={accessLevel !== 'admin'}
-                            className="appearance-none bg-slate-800 border border-slate-600 text-slate-200 font-mono font-bold py-1.5 pl-3 pr-8 rounded text-sm w-32 disabled:opacity-80 disabled:cursor-not-allowed"
-                          >
-                            {MC_VERSIONS.map(v => <option key={v} value={v}>{v}</option>)}
-                          </select>
-                          {accessLevel === 'admin' && <Icon name="chevron-down" className="w-4 h-4 text-slate-500 absolute right-2 top-2 pointer-events-none" />}
-                        </div>
-                     </div>
-
-                    <Icon name="arrow-right" className="w-5 h-5 text-slate-600 mt-5 hidden md:block" />
-
-                     <div className="flex flex-col items-end group">
-                        <label className="text-[10px] uppercase tracking-widest text-emerald-500 font-bold">Target</label>
-                        <div className="relative">
-                          <select 
-                            value={targetVersion} 
-                            onChange={(e) => { setTargetVersion(e.target.value); saveVersions(serverVersion, e.target.value); }}
-                            disabled={accessLevel !== 'admin'}
-                            className="appearance-none bg-slate-900 border border-emerald-500/30 text-emerald-400 font-mono font-bold py-1.5 pl-3 pr-8 rounded text-sm w-32 disabled:opacity-80 disabled:cursor-not-allowed"
-                          >
-                            {MC_VERSIONS.map(v => <option key={v} value={v}>{v}</option>)}
-                          </select>
-                          {accessLevel === 'admin' && <Icon name="chevron-down" className="w-4 h-4 text-emerald-500 absolute right-2 top-2 pointer-events-none" />}
-                        </div>
-                     </div>
                   </div>
                 </div>
               </header>
@@ -2160,44 +2293,91 @@
                    </div>
                 </div>
 
-                {/* Dashboard Status */}
-                {totalMods > 0 && activeTab === 'active' && (
-                  <div className={`border rounded-xl p-6 shadow-lg relative overflow-hidden transition-colors duration-300 ${isSyncMismatch ? 'bg-slate-800/50 border-amber-500/50' : 'bg-slate-800 border-slate-700'}`}>
-                     <div className="flex flex-col md:flex-row justify-between items-end md:items-center mb-4 gap-4">
-                       <div>
-                         <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                           {isSyncMismatch ? (
-                                <Icon name="triangle-exclamation" className="w-5 h-5 text-amber-500 animate-pulse" />
-                           ) : (
-                                <Icon name="bullseye" className="w-5 h-5 text-emerald-400" />
-                           )}
-                           Migration Target: <span className={`font-mono ${isSyncMismatch ? 'text-amber-400' : 'text-emerald-400'}`}>{targetVersion}</span>
-                         </h2>
-                         
-                         <p className="text-slate-400 text-sm mt-1 flex items-center gap-2">
-                           {isSyncMismatch ? (
-                               <span className="text-amber-400 font-bold">
-                                   ⚠️ Mismatch! List synced to {syncedVersion}. Click Refresh to sync.
-                               </span>
-                           ) : (
-                               <span>Last Synced: <span className="font-mono text-emerald-400/70">{syncedVersion}</span></span>
-                           )}
-                         </p>
-                       </div>
-                       <div className="text-right">
-                         <div className="text-3xl font-bold font-mono text-white">{percentReady}%</div>
-                       </div>
-                    </div>
-                    <div className="w-full bg-slate-900 rounded-full h-4 mb-2 overflow-hidden border border-slate-700">
-                      <div className={`h-full transition-all duration-1000 ease-out ${readyMods === totalMods ? 'bg-emerald-500' : 'bg-amber-500'}`} style={{ width: `${percentReady}%` }}></div>
-                    </div>
+                {/* Prepare Upgrade — collapsed section */}
+                {activeTab === 'active' && (
+                  <div className={`border rounded-xl overflow-hidden transition-all duration-200 ${isSyncMismatch && upgradeExpanded ? 'border-amber-500/50' : 'border-slate-700'}`}>
+                    <button
+                      onClick={() => setUpgradeExpanded(v => !v)}
+                      className={`w-full flex items-center justify-between px-5 py-3 text-sm font-medium transition-colors ${upgradeExpanded ? 'bg-slate-800' : 'bg-slate-800/50 hover:bg-slate-800'}`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Icon name={isSyncMismatch ? 'triangle-exclamation' : 'arrow-up-right-dots'} className={`w-4 h-4 ${isSyncMismatch ? 'text-amber-400 animate-pulse' : 'text-slate-400'}`} />
+                        <span className={isSyncMismatch ? 'text-amber-400' : 'text-slate-300'}>
+                          Prepare Upgrade
+                        </span>
+                        {isSyncMismatch && <span className="text-xs text-amber-500">— version mismatch</span>}
+                        {!isSyncMismatch && syncedVersion && <span className="text-xs text-slate-500">— synced to {syncedVersion}</span>}
+                      </div>
+                      <Icon name={upgradeExpanded ? 'chevron-up' : 'chevron-down'} className="w-3 h-3 text-slate-500" />
+                    </button>
+
+                    {upgradeExpanded && (
+                      <div className="px-5 py-4 bg-slate-800/30 border-t border-slate-700 space-y-4">
+                        {/* Version selectors */}
+                        <div className="flex items-center gap-4 flex-wrap">
+                          <div className="flex flex-col">
+                            <label className="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1">On Server</label>
+                            <div className="relative">
+                              <select
+                                value={serverVersion}
+                                onChange={(e) => { setServerVersion(e.target.value); saveVersions(e.target.value, targetVersion); }}
+                                disabled={accessLevel !== 'admin'}
+                                className="appearance-none bg-slate-800 border border-slate-600 text-slate-200 font-mono font-bold py-1.5 pl-3 pr-8 rounded text-sm w-32 disabled:opacity-80 disabled:cursor-not-allowed"
+                              >
+                                {MC_VERSIONS.map(v => <option key={v} value={v}>{v}</option>)}
+                              </select>
+                              {accessLevel === 'admin' && <Icon name="chevron-down" className="w-3 h-3 text-slate-500 absolute right-2 top-2.5 pointer-events-none" />}
+                            </div>
+                          </div>
+                          <Icon name="arrow-right" className="w-4 h-4 text-slate-600 mt-4" />
+                          <div className="flex flex-col">
+                            <label className="text-[10px] uppercase tracking-widest text-emerald-500 font-bold mb-1">Target</label>
+                            <div className="relative">
+                              <select
+                                value={targetVersion}
+                                onChange={(e) => { setTargetVersion(e.target.value); saveVersions(serverVersion, e.target.value); }}
+                                disabled={accessLevel !== 'admin'}
+                                className="appearance-none bg-slate-900 border border-emerald-500/30 text-emerald-400 font-mono font-bold py-1.5 pl-3 pr-8 rounded text-sm w-32 disabled:opacity-80 disabled:cursor-not-allowed"
+                              >
+                                {MC_VERSIONS.map(v => <option key={v} value={v}>{v}</option>)}
+                              </select>
+                              {accessLevel === 'admin' && <Icon name="chevron-down" className="w-3 h-3 text-emerald-500 absolute right-2 top-2.5 pointer-events-none" />}
+                            </div>
+                          </div>
+                          <div className="mt-4">
+                            <Button
+                              variant={isSyncMismatch ? 'primary' : 'secondary'}
+                              onClick={() => checkAllUpdates(mods, 'active')}
+                              disabled={checkingUpdates || mods.length === 0}
+                              className="relative overflow-hidden"
+                            >
+                              {isSyncMismatch && <div className="absolute inset-0 bg-amber-500/20 animate-pulse pointer-events-none" />}
+                              <Icon name="arrows-rotate" className={`w-4 h-4 ${checkingUpdates ? 'animate-spin' : ''}`} />
+                              {checkingUpdates ? 'Checking…' : isSyncMismatch ? `Refresh to ${targetVersion}` : 'Force Refresh'}
+                            </Button>
+                          </div>
+                        </div>
+                        {/* Progress bar */}
+                        {totalMods > 0 && (
+                          <div>
+                            <div className="flex justify-between text-xs text-slate-500 mb-1">
+                              <span>{readyMods}/{totalMods} mods ready for {targetVersion}</span>
+                              <span className="font-mono font-bold text-white">{percentReady}%</span>
+                            </div>
+                            <div className="w-full bg-slate-900 rounded-full h-2 overflow-hidden border border-slate-700">
+                              <div className={`h-full transition-all duration-1000 ease-out ${readyMods === totalMods ? 'bg-emerald-500' : 'bg-amber-500'}`} style={{ width: `${percentReady}%` }} />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   
                   {/* Search / Add Mod Card */}
-                  <Card className="md:col-span-2 p-5 overflow-visible">
+                  <Card className="md:col-span-3 p-5 overflow-visible">
                     {/* ── Row 1: Filter installed mods ── */}
                     <div className="flex gap-3 items-center mb-3">
                       <div className="flex-1 relative">
@@ -2309,76 +2489,35 @@
                     )}
                   </Card>
 
-                  {/* Controls */}
-                  <Card className="p-5 flex flex-col">
-                     <div className="mb-4">
-                       <h2 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-2">Actions</h2>
-                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                          <Button variant="outline" onClick={handleCopyInviteLink} className="text-xs py-2">
-                            {copyFeedback ? <Icon name="circle-check" className="w-3 h-3 text-emerald-400" /> : <Icon name="link" className="w-3 h-3" />}
-                            {copyFeedback ? 'Copied Link!' : 'Copy Invite Link'}
-                          </Button>
-
-                          {/* Admin Only Download Script */}
-                          {accessLevel === 'admin' && activeTab === 'active' && (
-                             <Button variant="outline" onClick={() => setShowScriptModal(true)} className="text-xs py-2">
-                                 <Icon name="terminal" className="w-3 h-3" /> Get Download Script
-                             </Button>
-                          )}
-
-                          {/* Export (Available to ALL users) */}
-                          <Button variant="outline" onClick={handleExportBackup} className="text-xs py-2">
-                              <Icon name="file-export" className="w-3 h-3" /> Export Backup
-                          </Button>
-
-                          {/* Import (Available only to ADMIN) */}
-                          {accessLevel === 'admin' && (
-                           <Button variant="outline" onClick={triggerImport} className="text-xs py-2">
-                               <Icon name="file-import" className="w-3 h-3" /> Import Backup
-                               <input
-                                    type="file"
-                                    ref={fileInputRef}
-                                    onChange={handleImportBackup}
-                                    style={{ display: 'none' }}
-                                    accept=".json"
-                               />
-                           </Button>
-                          )}
-
-                           {importStatus && (
-                              <div className={`col-span-full text-xs font-medium px-2 py-1 rounded text-center ${importStatus.type === 'success' ? 'bg-emerald-900/50 text-emerald-300' : 'bg-red-900/50 text-red-300'}`}>
-                                  {importStatus.message}
-                              </div>
-                           )}
-                       </div>
-                     </div>
-                     <Button
-                        variant={isSyncMismatch ? 'primary' : 'secondary'}
-                        onClick={() => checkAllUpdates(activeTab === 'active' ? mods : wishlist, activeTab)}
-                        disabled={checkingUpdates || totalMods === 0}
-                        className="w-full mt-auto relative overflow-hidden"
-                     >
-                       {isSyncMismatch && <div className="absolute inset-0 bg-amber-500/20 animate-pulse pointer-events-none"></div>}
-                       <Icon name="arrows-rotate" className={`w-4 h-4 ${checkingUpdates ? 'animate-spin' : ''}`} />
-                       {checkingUpdates ? 'Checking...' : isSyncMismatch ? `Force Refresh to ${targetVersion}` : 'Force Refresh'}
-                     </Button>
-                  </Card>
                 </div>
+
+                {importStatus && (
+                  <div className={`text-xs font-medium px-3 py-2 rounded text-center ${importStatus.type === 'success' ? 'bg-emerald-900/50 text-emerald-300' : 'bg-red-900/50 text-red-300'}`}>
+                    {importStatus.message}
+                  </div>
+                )}
 
                 {/* Mods List */}
                 <div className="space-y-4">
                   {/* Filters & Headers */}
-                  <div className="flex items-center justify-between px-2">
-                    <div className="flex items-center gap-4">
-                      <h2 className="text-lg font-medium text-white">
-                          {activeTab === 'active' ? 'Active Server Mods' : 'Requested Mods'}
-                      </h2>
+                  <div className="flex items-center justify-between px-2 flex-wrap gap-3">
+                    <div className="flex items-center gap-3 flex-wrap">
                       <div className="flex bg-slate-800 rounded-lg p-1 border border-slate-700">
                         <button onClick={() => setFilter('all')} className={`px-3 py-1 rounded text-xs font-medium transition-all ${filter === 'all' ? 'bg-slate-600 text-white' : 'text-slate-400 hover:text-white'}`}>All</button>
                         <button onClick={() => setFilter('ready')} className={`px-3 py-1 rounded text-xs font-medium transition-all ${filter === 'ready' ? 'bg-emerald-900/50 text-emerald-400' : 'text-slate-400 hover:text-white'}`}>Ready</button>
                         <button onClick={() => setFilter('missing')} className={`px-3 py-1 rounded text-xs font-medium transition-all ${filter === 'missing' ? 'bg-amber-900/50 text-amber-400' : 'text-slate-400 hover:text-white'}`}>Missing</button>
                         <button onClick={() => setFilter('custom')} className={`px-3 py-1 rounded text-xs font-medium transition-all ${filter === 'custom' ? 'bg-purple-900/50 text-purple-400' : 'text-slate-400 hover:text-white'}`}>Custom</button>
                       </div>
+                      {/* Sort */}
+                      <select
+                        value={sortBy}
+                        onChange={e => setSortBy(e.target.value)}
+                        className="appearance-none bg-slate-800 border border-slate-700 text-slate-400 text-xs rounded px-2 py-1 pr-6 focus:outline-none focus:border-slate-500 cursor-pointer"
+                      >
+                        <option value="name">A–Z</option>
+                        <option value="nameDesc">Z–A</option>
+                        <option value="recent">Recently Added</option>
+                      </select>
                     </div>
 
                     {activeTab === 'active' && (
@@ -2399,7 +2538,7 @@
                      </div>
                   ) : (
                     <div className="space-y-3">
-                      {filteredMods.map((mod) => (
+                      {sortedMods.map((mod) => (
                         <ModCard
                             key={mod.id}
                             mod={mod}
@@ -2420,6 +2559,7 @@
                             onRemoveFromVM={handleRemoveFromVM}
                             installStatus={installStatus}
                             vmApiUrl={vmApiUrl}
+                            upgradeExpanded={upgradeExpanded}
                         />
                       ))}
                       {filteredMods.length === 0 && totalMods > 0 && (
