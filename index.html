@@ -1703,7 +1703,9 @@
           const handleRemoveConfirmed = async (modId, removeFromVm, mod) => {
             setRemoveConfirmTarget(null);
             if (removeFromVm && mod) {
-              await handleRemoveFromVM(mod, mod.installed_version);
+              const vmOk = await handleRemoveFromVM(mod, mod.installed_version);
+              // If the VM call failed, don't remove from the list — the JAR is still there
+              if (!vmOk) return;
             }
             if (activeTab === 'active') {
               if (accessLevel !== 'admin') return;
@@ -1815,8 +1817,7 @@
           };
 
           const handleRemoveFromVM = async (mod, selectedVersion) => {
-            if (!vmApiUrl) return;
-            // Find actual filename on disk
+            if (!vmApiUrl) return false;
             const onDiskFile = vmDiskFiles && vmDiskFiles.find(f =>
               f.startsWith(mod.slug + '-') || f === mod.slug + '.jar'
             );
@@ -1824,16 +1825,18 @@
             setInstallStatus(prev => ({ ...prev, [mod.id]: 'removing' }));
             try {
               const res = await fetch(`${vmBase()}/remove/${encodeURIComponent(filename)}`, { method: 'DELETE', headers: { 'x-api-key': VM_API_KEY } });
-              if (!res.ok) throw new Error(`VM responded ${res.status}`);
+              if (!res.ok) throw new Error(`VM responded ${res.status}${res.status === 401 ? ' (wrong API key?)' : ''}`);
               setVmDiskFiles(prev => prev ? prev.filter(f => f !== filename) : null);
               addToast(`${mod.title} removed from VM`, 'info');
               setInstallStatus(prev => ({ ...prev, [mod.id]: 'removed' }));
               setTimeout(() => setInstallStatus(prev => { const n = {...prev}; delete n[mod.id]; return n; }), 2000);
+              return true;
             } catch (err) {
               console.error('Remove failed', err);
-              addToast(`Failed to remove ${mod.title}: ${err.message}`, 'error');
+              addToast(`Failed to remove ${mod.title} from VM: ${err.message}`, 'error');
               setInstallStatus(prev => ({ ...prev, [mod.id]: 'error' }));
               setTimeout(() => setInstallStatus(prev => { const n = {...prev}; delete n[mod.id]; return n; }), 4000);
+              return false;
             }
           };
 
@@ -1843,10 +1846,20 @@
             const fetchDisk = async () => {
               try {
                 const res = await fetch(`${vmApiUrl.replace(/\/+$/, '')}/mods`, { headers: { 'x-api-key': VM_API_KEY } });
-                if (!res.ok) return;
+                if (res.status === 401) {
+                  addToast('VM API key is wrong or missing — disk status unavailable', 'error');
+                  return;
+                }
+                if (!res.ok) {
+                  addToast(`VM unreachable (${res.status}) — disk status unavailable`, 'error');
+                  return;
+                }
                 const data = await res.json();
                 setVmDiskFiles(data.files || []);
-              } catch (e) { console.warn('Could not fetch VM disk files:', e); }
+              } catch (e) {
+                console.warn('Could not fetch VM disk files:', e);
+                addToast('Could not reach VM — check the API URL in Settings', 'error');
+              }
             };
             fetchDisk();
           }, [vmApiUrl, serverDocId]);
@@ -1859,6 +1872,8 @@
             setVmSyncData(null);
             try {
               const res = await fetch(`${vmBase()}/mods`, { headers: { 'x-api-key': VM_API_KEY } });
+              if (res.status === 401) throw new Error('Unauthorised — check your VM API key in Settings');
+              if (!res.ok) throw new Error(`VM responded ${res.status}`);
               const data = await res.json();
               setVmSyncData(data);
             } catch (err) {
