@@ -141,6 +141,7 @@ body.theme-nebula {
 
 html {
   background: var(--bg-0);
+  scrollbar-gutter: stable; /* reserve scrollbar space always - prevents layout jolt */
 }
 
 html, body {
@@ -1709,7 +1710,7 @@ const DashboardView = ({ ctx }) => {
     removeConfirmTarget, setRemoveConfirmTarget, installConfirmTarget, setInstallConfirmTarget, addModConfirmTarget, setAddModConfirmTarget, sortBy, setSortBy, filter, setFilter,
     toasts, addToast, fileInputRef, user, isSyncing,
     saveVersions, handleAddCustomMod, handleAddMod, handleRemoveMod, handleRemoveConfirmed, handleApproveWishlist,
-    handleVote, handleInstallMod, handleRemoveFromVM, handleVmSync, handleUpdateNote, handleVersionChange,
+    handleVote, handleInstallMod, handleRemoveFromVM, handleVmSync, handleSyncVersionsFromDisk, handleUpdateNote, handleVersionChange,
     handleSaveSettings, handleExportBackup, triggerImport, handleImportBackup, checkAllUpdates, handleLogout,
     activeDependencyIds, activeEditingMod, isSyncMismatch,
     dependencyOf
@@ -1717,12 +1718,20 @@ const DashboardView = ({ ctx }) => {
 
   const isAdmin = accessLevel === 'admin';
   const actionsRef = useRef(null);
+  const searchRef = useRef(null);
   useEffect(() => {
     if (!showActionsMenu) return;
     const onClick = (e) => { if (actionsRef.current && !actionsRef.current.contains(e.target)) setShowActionsMenu(false); };
     document.addEventListener('mousedown', onClick);
     return () => document.removeEventListener('mousedown', onClick);
   }, [showActionsMenu]);
+  // Close search dropdown on click outside (keeps text in input)
+  useEffect(() => {
+    if (!showDropdown) return;
+    const onDown = (e) => { if (searchRef.current && !searchRef.current.contains(e.target)) setShowDropdown(false); };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [showDropdown]);
 
   // ---- list compute ----
   const baseList = activeTab === 'active' ? mods : wishlist;
@@ -1961,6 +1970,7 @@ const DashboardView = ({ ctx }) => {
                   { icon: 'terminal', label: 'Get migration script', on: () => setShowScriptModal(true) },
                   { icon: 'file-arrow-up', label: 'Add custom mod', on: () => setShowCustomModal(true) },
                   isAdmin && vmApiUrl && { icon: 'hard-drive', label: 'VM sync', on: handleVmSync },
+                  isAdmin && vmApiUrl && { icon: 'rotate', label: 'Sync versions from disk', on: handleSyncVersionsFromDisk },
                   activeTab === 'active' && { icon: showUpgradePanel ? 'eye-slash' : 'diagram-project', label: showUpgradePanel ? 'Hide dependency tree' : 'Show dependency tree', on: () => setShowUpgradePanel(v => !v) },
                   activeTab === 'active' && libraryCount > 0 && { icon: showLibraries ? 'eye-slash' : 'layer-group', label: `${showLibraries ? 'Hide' : 'Show'} ${libraryCount} ${libraryCount === 1 ? 'library mod' : 'library mods'}`, on: () => setShowLibraries(v => !v) },
                   { icon: 'download', label: 'Export backup', on: handleExportBackup },
@@ -1982,29 +1992,33 @@ const DashboardView = ({ ctx }) => {
         {(isAdmin || activeTab === 'wishlist') && (
           <div style={{ position: 'relative' }}>
             <div style={{ display: 'flex', gap: 9, alignItems: 'center' }}>
-              <div style={{ position: 'relative', flex: 1 }}>
+              <div style={{ position: 'relative', flex: 1 }} ref={searchRef}>
                 <Icon name="magnifying-glass" style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', fontSize: 15, color: 'var(--text-faint)', pointerEvents: 'none' }} />
                 <input className="field" value={modInput} onChange={e => { setModInput(e.target.value); setError(null); }}
                   onKeyDown={e => { if (e.key === 'Enter') handleAddMod(e); }}
                   placeholder={`Search Modrinth to add a mod…`}
                   style={{ padding: '13px 16px 13px 42px', fontSize: 15, borderRadius: 14 }} />
                 {showDropdown && searchResults.length > 0 && (
-                  <Glass strong style={{ position: 'absolute', top: 'calc(100% + 8px)', left: 0, right: 0, zIndex: 30, padding: 8, borderRadius: 18, maxHeight: 380, overflowY: 'auto' }}>
+                  <Glass strong style={{ position: 'absolute', top: 'calc(100% + 8px)', left: 0, right: 0, zIndex: 30, padding: 8, borderRadius: 18, maxHeight: 400, overflowY: 'auto' }}>
                     {searchResults.map((hit, idx) => (
                       <button key={hit.project_id} onClick={() => handleSelectSearchResult(hit)}
-                        style={{ display: 'flex', alignItems: 'center', gap: 14, width: '100%', padding: '11px 12px', background: 'transparent', border: 0, borderRadius: 12, cursor: 'pointer', textAlign: 'left', transition: 'background .15s', borderBottom: idx < searchResults.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 14, width: '100%', padding: '12px 14px', background: 'transparent', border: 0, borderRadius: 13, cursor: 'pointer', textAlign: 'left', transition: 'background .15s', borderBottom: idx < searchResults.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}
                         onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.07)'}
                         onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                         {hit.icon_url
-                          ? <img src={hit.icon_url} alt="" style={{ width: 46, height: 46, borderRadius: 12, objectFit: 'cover', flexShrink: 0, boxShadow: '0 2px 8px rgba(0,0,0,0.4)' }} />
-                          : <div style={{ width: 46, height: 46, borderRadius: 12, background: 'rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><Icon name="cube" style={{ color: 'var(--text-faint)', fontSize: 18 }} /></div>}
+                          ? <img src={hit.icon_url} alt="" style={{ width: 48, height: 48, borderRadius: 13, objectFit: 'cover', flexShrink: 0, boxShadow: '0 3px 10px rgba(0,0,0,0.45)' }} />
+                          : <div style={{ width: 48, height: 48, borderRadius: 13, background: 'rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><Icon name="cube" style={{ color: 'var(--text-faint)', fontSize: 20 }} /></div>}
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 15, fontWeight: 640, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '-0.01em' }}>{hit.title}</div>
-                          <div style={{ fontSize: 12.5, color: 'var(--text-faint)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 3 }}>{hit.description}</div>
+                          <div style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 400, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '-0.01em', lineHeight: 1.2 }}>{hit.title}</div>
+                          <div style={{ fontSize: 12.5, color: 'var(--text-faint)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 4 }}>{hit.description}</div>
                         </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 5, flexShrink: 0 }}>
-                          <span className="badge badge-green" style={{ fontSize: 12 }}><Icon name="plus" style={{ fontSize: 10 }} /> Add</span>
-                          <span style={{ fontSize: 11, color: 'var(--text-ghost)', display: 'flex', alignItems: 'center', gap: 3 }}><Icon name="download" style={{ fontSize: 9 }} />{(hit.downloads / 1000 | 0)}k</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+                          <span style={{ fontSize: 12, color: 'var(--text-ghost)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <Icon name="download" style={{ fontSize: 10 }} />{(hit.downloads / 1000 | 0)}k
+                          </span>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 99, background: 'var(--acc-grad)', color: '#fff', fontSize: 13.5, fontWeight: 650, boxShadow: '0 4px 14px -4px var(--acc-glow)', whiteSpace: 'nowrap' }}>
+                            <Icon name="plus" style={{ fontSize: 11 }} /> Add
+                          </span>
                         </div>
                       </button>
                     ))}
@@ -2443,8 +2457,43 @@ function ModManager() {
     if (!inputVal.trim()) return;
     setSearchResults([]); setShowDropdown(false);
     const trimmed = inputVal.trim();
-    const match = trimmed.match(/modrinth\.com\/[\w-]+\/([^\/?#\s]+)/);
-    const cleanSlug = (match ? match[1] : trimmed).toLowerCase();
+    const urlMatch = trimmed.match(/modrinth\.com\/[\w-]+\/([^\/?#\s]+)/);
+    const cleanSlug = (urlMatch ? urlMatch[1] : trimmed).toLowerCase();
+
+    // Modrinth URL pasted directly (not a programmatic dependency add) - go through the confirm modal
+    if (urlMatch && !manualInput) {
+      setLoading(true); setError(null);
+      try {
+        const [info, allV] = await Promise.all([
+          fetch(`${MODRINTH_API_BASE}/project/${cleanSlug}`).then(r => { if (!r.ok) throw new Error('Not found'); return r.json(); }),
+          fetch(`${MODRINTH_API_BASE}/project/${cleanSlug}/version?loaders=["${LOADER}"]&game_versions=${JSON.stringify([serverVersion, targetVersion])}`)
+            .then(r => r.ok ? r.json() : []).catch(() => [])
+        ]);
+        const svCands = allV.filter(v => v.game_versions.includes(serverVersion));
+        const tvCands = allV.filter(v => v.game_versions.includes(targetVersion));
+        const latestSv = svCands[0], latestTv = tvCands[0];
+        const pFile = latestTv ? (latestTv.files.find(f => f.primary) || latestTv.files[0]) : null;
+        setAddModConfirmTarget({
+          mod: {
+            id: info.id, slug: info.slug, title: info.title, icon_url: info.icon_url,
+            description: info.description, server_side: info.server_side, client_side: info.client_side,
+            installed_version: latestSv ? latestSv.version_number : 'Not Installed',
+            server_candidates: svCands.map(v => v.version_number),
+            target_version_number: latestTv ? latestTv.version_number : 'None Found',
+            primary_file_url: pFile ? pFile.url : null,
+            dependencies: latestSv ? latestSv.dependencies : [],
+            project_url: `https://modrinth.com/mod/${info.slug}`,
+            status: latestTv ? 'ready' : 'missing',
+            enabled: true, upvotes: [], downvotes: [], note: ''
+          }
+        });
+        setModInput('');
+      } catch (err) { setError("Couldn't find that mod. Check the URL."); }
+      finally { setLoading(false); }
+      return;
+    }
+
+    // Direct slug add (used by dependency resolution, deep links, etc.)
     if (mods.some(m => m.slug === cleanSlug)) { if (!manualInput) setError("Already on the server."); return; }
     if (activeTab === 'wishlist' && wishlist.some(m => m.slug === cleanSlug)) { if (!manualInput) setError("Already in the wishlist."); return; }
     setLoading(true); if (!manualInput) setError(null);
@@ -2601,6 +2650,46 @@ function ModManager() {
       } catch (e) { addToast('Could not reach VM - check the API URL in Settings', 'error'); }
     })();
   }, [vmApiUrl, serverDocId, demo]);
+
+  // Reads actual JAR filenames from the VM and updates installed_version in Firestore to match
+  const handleSyncVersionsFromDisk = async () => {
+    if (!vmApiUrl) { addToast('No VM API configured', 'error'); return; }
+    setLoading(true);
+    try {
+      const res = await fetch(`${vmBase()}/mods`, { headers: { 'x-api-key': VM_API_KEY } });
+      if (res.status === 401) throw new Error('Unauthorised - check VM API key in Settings');
+      if (!res.ok) throw new Error(`VM responded ${res.status}`);
+      const data = await res.json();
+      const diskFiles = data.files || [];
+      setVmDiskFiles(diskFiles); // refresh disk state too
+
+      let updated = 0;
+      const updatedMods = mods.map(mod => {
+        if (mod.isCustom) return mod;
+        const diskFile = diskFiles.find(f => f.startsWith(mod.slug + '-') || f === mod.slug + '.jar');
+        if (!diskFile) return mod;
+        // Extract version from filename: slug-VERSION.jar
+        const extracted = diskFile.startsWith(mod.slug + '-')
+          ? diskFile.slice(mod.slug.length + 1).replace(/\.jar$/i, '')
+          : null;
+        if (!extracted || extracted === mod.installed_version) return mod;
+        updated++;
+        // Keep existing candidates but prepend the actual installed version if missing
+        const newCandidates = mod.server_candidates?.includes(extracted)
+          ? mod.server_candidates
+          : [extracted, ...(mod.server_candidates || [])];
+        return { ...mod, installed_version: extracted, server_candidates: newCandidates };
+      });
+
+      if (updated > 0) {
+        await saveToServer(updatedMods, null);
+        addToast(`Synced ${updated} version${updated === 1 ? '' : 's'} from disk`);
+      } else {
+        addToast('All versions already match disk', 'info');
+      }
+    } catch (err) { addToast(`Sync failed: ${err.message}`, 'error'); }
+    finally { setLoading(false); }
+  };
 
   const handleVmSync = async () => {
     if (!vmApiUrl) return;
