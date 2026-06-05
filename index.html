@@ -18,7 +18,7 @@
 
   <style>
 /* ============================================================
-   LIQUID GLASS — Apple-esque design system for ModManager
+   LIQUID GLASS - Apple-esque design system for ModManager
    Themes: Aurora (default), Frost, Nebula
    ============================================================ */
 
@@ -38,7 +38,7 @@
   --text-faint: rgba(148,163,184,0.55);
   --text-ghost: rgba(148,163,184,0.34);
 
-  /* Accent (emerald -> blue gradient — chosen direction) */
+  /* Accent (emerald -> blue gradient - chosen direction) */
   --acc-1: #34e0a1;
   --acc-2: #2aa9ff;
   --acc-grad: linear-gradient(120deg, var(--acc-1), var(--acc-2));
@@ -494,7 +494,7 @@ textarea.field { resize: none; line-height: 1.5; }
 
 <script type="text/babel">
 // ============================================================
-//  components.jsx — primitives, helpers, constants (shared via window)
+//  components.jsx - primitives, helpers, constants (shared via window)
 // ============================================================
 const { useState, useEffect, useCallback, useRef, useMemo } = React;
 
@@ -669,7 +669,7 @@ const CopyChip = ({ value, label, mono = true, icon = "copy" }) => {
 
 
 // ============================================================
-//  modcard.jsx — NoteInput, DependencySection, ModCard
+//  modcard.jsx - NoteInput, DependencySection, ModCard
 // ============================================================
 
 // ---------- Note input (wishlist) ----------
@@ -891,7 +891,7 @@ const ModCard = ({ mod, allMods, isCheckingUpdates, accessLevel, activeTab, onVe
             </Select>
           )}
           {!mod.isCustom && candidates.length === 0 && (
-            <span style={{ flex: 1, fontSize: 12, color: 'var(--text-faint)', fontFamily: 'var(--mono)' }}>{mod.installed_version || '—'}</span>
+            <span style={{ flex: 1, fontSize: 12, color: 'var(--text-faint)', fontFamily: 'var(--mono)' }}>{mod.installed_version || '-'}</span>
           )}
           {mod.isCustom && (
             <span style={{ flex: 1, fontSize: 12, color: 'var(--text-faint)', fontFamily: 'var(--mono)', display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
@@ -911,7 +911,7 @@ const ModCard = ({ mod, allMods, isCheckingUpdates, accessLevel, activeTab, onVe
                 <Icon name="triangle-exclamation" style={{ fontSize: 11 }} /> Failed
               </span>
             ) : isOnDisk ? (
-              <button onClick={() => onRemoveFromVM(mod, selectedVersion)} title="Installed on VM — click to remove"
+              <button onClick={() => onRemoveFromVM(mod, selectedVersion)} title="Installed on VM - click to remove"
                 className="badge badge-green" style={{ cursor: 'pointer', flexShrink: 0, padding: '6px 11px' }}>
                 <Icon name="circle-check" style={{ fontSize: 11 }} /> Installed
               </button>
@@ -960,7 +960,7 @@ const ModCard = ({ mod, allMods, isCheckingUpdates, accessLevel, activeTab, onVe
 
 
 // ============================================================
-//  modals.jsx — Script, CustomMod, Settings, Dependency, RemoveConfirm, InstallConfirm, VmSync
+//  modals.jsx - Script, CustomMod, Settings, Dependency, RemoveConfirm, InstallConfirm, VmSync
 // ============================================================
 
 // ---------- Script Modal ----------
@@ -1088,7 +1088,7 @@ const CustomModModal = ({ isOpen, onClose, onAdd, storage }) => {
             <input type="file" accept=".jar,.zip" onChange={e => { if (e.target.files[0]) { setFile(e.target.files[0]); setUrl(''); } }}
               style={{ fontSize: 12, color: 'var(--text-dim)', width: '100%' }} />
             {file && <p style={{ margin: '8px 0 0', fontSize: 11, color: 'var(--good)' }}><Icon name="check" style={{ fontSize: 10 }} /> Ready: {file.name}</p>}
-            {!storage && <p style={{ margin: '8px 0 0', fontSize: 11, color: 'var(--warn)' }}>Storage unavailable in demo — use a URL instead.</p>}
+            {!storage && <p style={{ margin: '8px 0 0', fontSize: 11, color: 'var(--warn)' }}>Storage unavailable in demo - use a URL instead.</p>}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div className="divider" style={{ flex: 1 }} /><span style={{ fontSize: 11, color: 'var(--text-ghost)' }}>OR USE URL</span><div className="divider" style={{ flex: 1 }} />
@@ -1137,7 +1137,7 @@ const SettingsModal = ({ isOpen, onClose, initialName, initialIP, initialUrl, in
             <Select value={gameVer} onChange={e => setGameVer(e.target.value)}>
               {MC_VERSIONS.map(v => <option key={v} value={v}>{v}</option>)}
             </Select>
-            <p style={{ margin: '5px 0 0', fontSize: 10, color: 'var(--text-faint)' }}>Current running server version — used for mod compatibility lookups.</p>
+            <p style={{ margin: '5px 0 0', fontSize: 10, color: 'var(--text-faint)' }}>Current running server version - used for mod compatibility lookups.</p>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <Field label="Fabric Loader Version" mono value={fabricLoader} onChange={e => setFabricLoader(e.target.value)} placeholder="0.16.9" />
@@ -1203,7 +1203,7 @@ const RemoveConfirmModal = ({ target, onClose, onRemoveListOnly, onRemoveListAnd
             {isOnDisk
               ? <p style={{ margin: '5px 0 0', fontSize: 13, color: 'var(--warn)', display: 'flex', gap: 6, lineHeight: 1.4 }}><Icon name="hard-drive" style={{ fontSize: 12, marginTop: 2, flexShrink: 0 }} /> This mod{`'`}s JAR is installed on the VM. Remove it there too?</p>
               : target.vmConfigured
-                ? <p style={{ margin: '5px 0 0', fontSize: 13, color: 'var(--text-dim)', display: 'flex', gap: 6 }}><Icon name="circle-info" style={{ fontSize: 12, marginTop: 2, flexShrink: 0 }} /> Not found on VM disk — list removal only.</p>
+                ? <p style={{ margin: '5px 0 0', fontSize: 13, color: 'var(--text-dim)', display: 'flex', gap: 6 }}><Icon name="circle-info" style={{ fontSize: 12, marginTop: 2, flexShrink: 0 }} /> Not found on VM disk - list removal only.</p>
                 : <p style={{ margin: '5px 0 0', fontSize: 13, color: 'var(--text-dim)' }}>Remove from the mod list?</p>}
           </div>
         </div>
@@ -1324,7 +1324,7 @@ const VmSyncModal = ({ isOpen, onClose, loading, data, mods }) => {
 
 
 // ============================================================
-//  views.jsx — renderApp(ctx): Login, Create, Dashboard
+//  views.jsx - renderApp(ctx): Login, Create, Dashboard
 // ============================================================
 
 // ---------- Brand mark ----------
@@ -1367,7 +1367,7 @@ const LoginView = ({ ctx }) => {
         </Glass>
         <button onClick={enterDemo} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', marginTop: 16, background: 'transparent', border: 0, color: 'var(--text-faint)', fontSize: 13.5, fontWeight: 560, cursor: 'pointer', padding: 10 }}
           onMouseEnter={e => e.currentTarget.style.color = 'var(--text)'} onMouseLeave={e => e.currentTarget.style.color = 'var(--text-faint)'}>
-          <Icon name="wand-magic-sparkles" style={{ fontSize: 12 }} /> Explore the demo dashboard — no code needed
+          <Icon name="wand-magic-sparkles" style={{ fontSize: 12 }} /> Explore the demo dashboard - no code needed
         </button>
       </div>
     </div>
@@ -1469,7 +1469,7 @@ const AddModConfirmModal = ({ target, onClose, onAddListOnly, onAddAndInstall, v
               )}
               {mod.target_version_number === 'None Found' && (
                 <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--warn)', display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <Icon name="triangle-exclamation" style={{ fontSize: 10 }} /> No build found for target version — may block migration
+                  <Icon name="triangle-exclamation" style={{ fontSize: 10 }} /> No build found for target version - may block migration
                 </p>
               )}
             </div>
@@ -1574,7 +1574,7 @@ const MigrationModal = ({ isOpen, onClose, mods, serverVersion, targetVersion, s
           </div>
         </div>
 
-        {/* Body — mod readiness list */}
+        {/* Body - mod readiness list */}
         <div style={{ maxHeight: 340, overflowY: 'auto', padding: '14px 24px' }}>
           {missingMods.length > 0 && (
             <div style={{ marginBottom: 14 }}>
@@ -1586,7 +1586,7 @@ const MigrationModal = ({ isOpen, onClose, mods, serverVersion, targetVersion, s
                   <div key={mod.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 11px', borderRadius: 10, background: 'rgba(255,107,107,0.07)', border: '1px solid rgba(255,107,107,0.2)', fontSize: 13 }}>
                     {mod.icon_url && <img src={mod.icon_url} alt="" style={{ width: 22, height: 22, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} />}
                     <span style={{ flex: 1, fontWeight: 560, color: '#ffb3b3' }}>{mod.title}</span>
-                    <span style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--text-faint)' }}>{mod.installed_version || '—'}</span>
+                    <span style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--text-faint)' }}>{mod.installed_version || '-'}</span>
                     <Icon name="arrow-right" style={{ fontSize: 10, color: 'var(--text-ghost)' }} />
                     <span style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--bad)', fontWeight: 700 }}>No build</span>
                   </div>
@@ -1603,7 +1603,7 @@ const MigrationModal = ({ isOpen, onClose, mods, serverVersion, targetVersion, s
                 <div key={mod.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 11px', borderRadius: 10, background: 'rgba(52,224,161,0.05)', border: '1px solid rgba(52,224,161,0.15)', fontSize: 13 }}>
                   {mod.icon_url && <img src={mod.icon_url} alt="" style={{ width: 22, height: 22, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} />}
                   <span style={{ flex: 1, fontWeight: 560, color: 'var(--text-dim)' }}>{mod.title}</span>
-                  <span style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--text-faint)' }}>{mod.installed_version || '—'}</span>
+                  <span style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--text-faint)' }}>{mod.installed_version || '-'}</span>
                   <Icon name="arrow-right" style={{ fontSize: 10, color: 'var(--text-ghost)' }} />
                   <span style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--good)', fontWeight: 700 }}>{mod.target_version_number}</span>
                 </div>
@@ -1631,7 +1631,7 @@ const MigrationModal = ({ isOpen, onClose, mods, serverVersion, targetVersion, s
 };
 
 // ============================================================
-//  dashboard.jsx — DashboardView + renderApp dispatcher
+//  dashboard.jsx - DashboardView + renderApp dispatcher
 // ============================================================
 
 // ---- Stat pill used in hero ----
@@ -1706,7 +1706,7 @@ const DashboardView = ({ ctx }) => {
   const enabledCount = mods.filter(m => m.enabled !== false).length;
 
 
-  // Called when user clicks a search result — fetches full mod info and shows AddModConfirmModal
+  // Called when user clicks a search result - fetches full mod info and shows AddModConfirmModal
   const handleSelectSearchResult = async (hit) => {
     setShowDropdown(false);
     setModInput('');
@@ -1735,7 +1735,7 @@ const DashboardView = ({ ctx }) => {
         }
       });
     } catch(err) {
-      // fallback — add directly without modal
+      // fallback - add directly without modal
       handleAddMod(null, hit.slug);
     }
   };
@@ -1882,7 +1882,7 @@ const DashboardView = ({ ctx }) => {
           </div>
         </div>
 
-        {/* ===== Add Mod — always visible pinned search bar ===== */}
+        {/* ===== Add Mod - always visible pinned search bar ===== */}
         {(isAdmin || activeTab === 'wishlist') && (
           <div style={{ position: 'relative' }}>
             <div style={{ display: 'flex', gap: 9, alignItems: 'center' }}>
@@ -1928,11 +1928,11 @@ const DashboardView = ({ ctx }) => {
         {activeTab === 'active' && libraryCount > 0 && !showLibraries && (
           <button onClick={() => setShowLibraries(true)} style={{ alignSelf: 'flex-start', background: 'transparent', border: 0, color: 'var(--text-faint)', fontSize: 12.5, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 7, padding: 0 }}
             onMouseEnter={e => e.currentTarget.style.color = 'var(--text-dim)'} onMouseLeave={e => e.currentTarget.style.color = 'var(--text-faint)'}>
-            <Icon name="layer-group" style={{ fontSize: 11 }} /> {libraryCount} library {libraryCount === 1 ? 'mod' : 'mods'} hidden — show
+            <Icon name="layer-group" style={{ fontSize: 11 }} /> {libraryCount} library {libraryCount === 1 ? 'mod' : 'mods'} hidden - show
           </button>
         )}
 
-        {/* ===== Filter tabs — Custom only ===== */}
+        {/* ===== Filter tabs - Custom only ===== */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
           {[
             { value: 'all', label: 'All' },
@@ -2015,7 +2015,7 @@ window.DashboardView = DashboardView;
 window.renderApp = renderApp;
 
 // ============================================================
-//  app.jsx — ModManager (state, handlers, views) + demo mode + themes
+//  app.jsx - ModManager (state, handlers, views) + demo mode + themes
 // ============================================================
 
 // ---------- Firebase (wired, from source) ----------
@@ -2037,7 +2037,7 @@ try {
   storage = firebase.storage();
   firebaseOk = true;
 } catch (e) {
-  console.warn("Firebase init failed — demo mode only:", e);
+  console.warn("Firebase init failed - demo mode only:", e);
 }
 
 // ---------- Demo data (for previewing without a code) ----------
@@ -2054,12 +2054,12 @@ const DEMO_MODS = [
 const DEMO_WISHLIST = [
   { id: '1u6JkXh5', slug: 'worldedit', title: 'WorldEdit', description: 'An in-game map editor for fixing griefing and building large structures fast.', icon_url: 'https://cdn.modrinth.com/data/1u6JkXh5/icon.png', server_side: 'required', client_side: 'optional', installed_version: '7.3.0', target_version_number: '7.3.0', status: 'ready', upvotes: ['a', 'b', 'c', 'd'], downvotes: ['e'], note: 'Would help a LOT with rebuilding spawn after the creeper incident.', noteAuthorId: 'demo-user', enabled: true },
   { id: 'NNAgCjsB', slug: 'appleskin', title: 'AppleSkin', description: 'Adds food/hunger related HUD information to the screen.', icon_url: 'https://cdn.modrinth.com/data/EsAfCjCV/icon.png', server_side: 'required', client_side: 'required', installed_version: '3.0.6', target_version_number: '3.0.6', status: 'ready', upvotes: ['a', 'b', 'c', 'd', 'e', 'f'], downvotes: [], note: '', enabled: true },
-  { id: 'fRiHVvsL', slug: 'create', title: 'Create', description: 'Aesthetic technology that empowers the player. Big one — performance cost.', icon_url: 'https://cdn.modrinth.com/data/Wnxd13zP/icon.png', server_side: 'required', client_side: 'required', installed_version: '6.0.4', target_version_number: '6.0.4', status: 'ready', upvotes: ['a', 'b'], downvotes: ['c', 'd', 'e'], note: 'Cool but might tank TPS on the Oracle box. Test first?', noteAuthorId: 'someone-else', enabled: true },
+  { id: 'fRiHVvsL', slug: 'create', title: 'Create', description: 'Aesthetic technology that empowers the player. Big one - performance cost.', icon_url: 'https://cdn.modrinth.com/data/Wnxd13zP/icon.png', server_side: 'required', client_side: 'required', installed_version: '6.0.4', target_version_number: '6.0.4', status: 'ready', upvotes: ['a', 'b'], downvotes: ['c', 'd', 'e'], note: 'Cool but might tank TPS on the Oracle box. Test first?', noteAuthorId: 'someone-else', enabled: true },
 ];
 
 
 // ============================================================
-//  manager.jsx — ModManager component (logic). Views appended below.
+//  manager.jsx - ModManager component (logic). Views appended below.
 // ============================================================
 
 function ModManager() {
@@ -2089,7 +2089,7 @@ function ModManager() {
   const [syncedVersion, setSyncedVersion] = useState(null);
   const [fabricLoaderVersion, setFabricLoaderVersion] = useState('');
   const [fabricApiVersion, setFabricApiVersion] = useState('');
-  // loader is always 'fabric' — no state needed
+  // loader is always 'fabric' - no state needed
   const [activeTab, setActiveTab] = useState('active');
   const [mods, setMods] = useState([]);
   const [wishlist, setWishlist] = useState([]);
@@ -2261,7 +2261,7 @@ function ModManager() {
     setMods(DEMO_MODS); setWishlist(DEMO_WISHLIST);
     setServerVersion('26.1'); setTargetVersion('26.1.1'); setSyncedVersion('26.1');
     setServerStatus({ online: true, players: { online: 7, max: 20 }, version: '26.1' });
-    // Simulate a connected VM — show On Server badges and install controls
+    // Simulate a connected VM - show On Server badges and install controls
     setVmApiUrl('https://demo-vm.theboys.gg');
     setVmDiskFiles([
       'sodium-mc26.1-0.6.9.jar',
@@ -2269,7 +2269,7 @@ function ModManager() {
       'lithium-mc26.1-0.14.5.jar',
       'ferritecore-8.0.0.jar',
       'iris-1.8.8.jar',
-      // modmenu and indium not "installed" — to show the not-installed badge
+      // modmenu and indium not "installed" - to show the not-installed badge
     ]);
     setActiveTab('active'); setView('dashboard');
   };
@@ -2418,7 +2418,7 @@ function ModManager() {
 
   // --- VM ---
   const vmBase = () => vmApiUrl.replace(/\/+$/, '');
-  // Demo-mode VM install — just updates local disk file list
+  // Demo-mode VM install - just updates local disk file list
   const demoInstall = (mod, versionNumber) => {
     const filename = mod.isCustom ? `${mod.slug}.jar` : `${mod.slug}-${versionNumber}.jar`;
     setVmDiskFiles(prev => [...(prev || []).filter(f => !f.startsWith(mod.slug + '-') && f !== mod.slug + '.jar'), filename]);
@@ -2487,10 +2487,10 @@ function ModManager() {
     (async () => {
       try {
         const res = await fetch(`${vmApiUrl.replace(/\/+$/, '')}/mods`, { headers: { 'x-api-key': VM_API_KEY } });
-        if (res.status === 401) { addToast('VM API key wrong/missing — disk status unavailable', 'error'); return; }
+        if (res.status === 401) { addToast('VM API key wrong/missing - disk status unavailable', 'error'); return; }
         if (!res.ok) { addToast(`VM unreachable (${res.status})`, 'error'); return; }
         const data = await res.json(); setVmDiskFiles(data.files || []);
-      } catch (e) { addToast('Could not reach VM — check the API URL in Settings', 'error'); }
+      } catch (e) { addToast('Could not reach VM - check the API URL in Settings', 'error'); }
     })();
   }, [vmApiUrl, serverDocId, demo]);
 
@@ -2499,7 +2499,7 @@ function ModManager() {
     setVmSyncLoading(true); setShowVmSyncModal(true); setVmSyncData(null);
     try {
       const res = await fetch(`${vmBase()}/mods`, { headers: { 'x-api-key': VM_API_KEY } });
-      if (res.status === 401) throw new Error('Unauthorised — check your VM API key in Settings');
+      if (res.status === 401) throw new Error('Unauthorised - check your VM API key in Settings');
       if (!res.ok) throw new Error(`VM responded ${res.status}`);
       setVmSyncData(await res.json());
     } catch (err) { setVmSyncData({ error: err.message }); }
