@@ -1653,6 +1653,7 @@ const DashboardView = ({ ctx }) => {
     handleVote, handleInstallMod, handleRemoveFromVM, handleVmSync, handleUpdateNote, handleVersionChange,
     handleSaveSettings, handleExportBackup, triggerImport, handleImportBackup, checkAllUpdates, handleLogout,
     activeDependencyIds, activeEditingMod, isSyncMismatch,
+    dependencyOf
   } = ctx;
 
   const isAdmin = accessLevel === 'admin';
@@ -2638,6 +2639,8 @@ function ModManager() {
     handleRemoveMod, handleRemoveConfirmed, handleApproveWishlist, handleVote, handleInstallMod, handleRemoveFromVM, handleVmSync,
     handleUpdateNote, handleToggleMod, handleVersionChange, handleSaveSettings, handleExportBackup, triggerImport, handleImportBackup, checkAllUpdates,
     activeDependencyIds, activeEditingMod, isSyncMismatch,
+    dependencyOf,
+    isInitializing
   };
 
   return renderApp(ctx);
