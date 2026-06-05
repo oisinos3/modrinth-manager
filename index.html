@@ -184,8 +184,8 @@ body {
   content: "";
   position: absolute; inset: 0;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.72' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
-  opacity: 0.13;
-  mix-blend-mode: soft-light;
+  opacity: 0.22;
+  mix-blend-mode: overlay;
 }
 
 /* ============================================================
@@ -873,6 +873,9 @@ const ModCard = ({ mod, allMods, isCheckingUpdates, accessLevel, activeTab, onVe
                 ? <Badge color="green" icon="circle-check">On server</Badge>
                 : <Badge color="slate" icon="hard-drive">Not installed</Badge>
             )}
+            {mod.categories && mod.categories.slice(0, 2).map(cat => (
+              <span key={cat} style={{ fontSize: 10, fontWeight: 660, letterSpacing: '.04em', textTransform: 'capitalize', padding: '2px 8px', borderRadius: 99, background: 'rgba(255,255,255,0.07)', color: 'var(--text-ghost)', border: '1px solid rgba(255,255,255,0.1)', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center' }}>{cat}</span>
+            ))}
           </div>
         </div>
         <div style={{ display: 'flex', gap: 2, flexShrink: 0, marginTop: -2 }}>
@@ -1464,6 +1467,8 @@ const AddModConfirmModal = ({ target, onClose, onAddListOnly, onAddAndInstall, v
   const [selectedVersion, setSelectedVersion] = useState(candidates[0] || mod.installed_version || '');
   const [phase, setPhase] = useState('idle'); // idle | installing | done | error
   const [errMsg, setErrMsg] = useState('');
+  const [descExpanded, setDescExpanded] = useState(false);
+  const descLong = mod.description && mod.description.length > 160;
 
   const handleListOnly = () => { onAddListOnly(mod); onClose(); };
   const handleListAndInstall = async () => {
@@ -1480,17 +1485,40 @@ const AddModConfirmModal = ({ target, onClose, onAddListOnly, onAddAndInstall, v
 
   return (
     <div className="scrim" onClick={phase === 'idle' ? onClose : undefined}>
-      <div className="sheet" style={{ maxWidth: 440, padding: 0, overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
+      <div className="sheet" style={{ maxWidth: 460, padding: 0, overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
         {/* Header */}
-        <div style={{ padding: '20px 22px 16px', borderBottom: '1px solid var(--glass-border)', display: 'flex', gap: 14, alignItems: 'center' }}>
-          {mod.icon_url
-            ? <img src={mod.icon_url} alt="" style={{ width: 48, height: 48, borderRadius: 13, objectFit: 'cover', flexShrink: 0, boxShadow: '0 4px 14px -4px rgba(0,0,0,0.6)' }} />
-            : <div style={{ width: 48, height: 48, borderRadius: 13, background: 'rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><Icon name="cube" style={{ color: 'var(--text-faint)', fontSize: 18 }} /></div>}
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 16, fontWeight: 660, letterSpacing: '-0.01em' }}>{mod.title}</div>
-            <div style={{ fontSize: 12, color: 'var(--text-faint)', marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{mod.description}</div>
+        <div style={{ padding: '20px 22px 16px', borderBottom: '1px solid var(--glass-border)' }}>
+          <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start', marginBottom: 12 }}>
+            {mod.icon_url
+              ? <img src={mod.icon_url} alt="" style={{ width: 52, height: 52, borderRadius: 14, objectFit: 'cover', flexShrink: 0, boxShadow: '0 4px 14px -4px rgba(0,0,0,0.6)' }} />
+              : <div style={{ width: 52, height: 52, borderRadius: 14, background: 'rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><Icon name="cube" style={{ color: 'var(--text-faint)', fontSize: 20 }} /></div>}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 17, fontWeight: 660, letterSpacing: '-0.01em', lineHeight: 1.2 }}>{mod.title}</div>
+              {mod.categories && mod.categories.length > 0 && (
+                <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 7 }}>
+                  {mod.categories.slice(0, 4).map(cat => (
+                    <span key={cat} style={{ fontSize: 10.5, fontWeight: 660, letterSpacing: '.04em', textTransform: 'capitalize', padding: '2px 8px', borderRadius: 99, background: 'rgba(255,255,255,0.09)', color: 'var(--text-faint)', border: '1px solid rgba(255,255,255,0.12)' }}>{cat}</span>
+                  ))}
+                </div>
+              )}
+            </div>
+            {phase === 'idle' && <button className="icon-x" style={{ position: 'static', flexShrink: 0, marginTop: -2 }} onClick={onClose}><Icon name="xmark" /></button>}
           </div>
-          {phase === 'idle' && <button className="icon-x" style={{ position: 'static', flexShrink: 0 }} onClick={onClose}><Icon name="xmark" /></button>}
+          {mod.description && (
+            <div>
+              <p style={{ margin: 0, fontSize: 13, color: 'var(--text-faint)', lineHeight: 1.55,
+                display: descExpanded ? 'block' : '-webkit-box',
+                WebkitLineClamp: descExpanded ? 'unset' : 3,
+                WebkitBoxOrient: 'vertical', overflow: descExpanded ? 'visible' : 'hidden' }}>
+                {mod.description}
+              </p>
+              {descLong && (
+                <button onClick={() => setDescExpanded(v => !v)} style={{ marginTop: 6, background: 'transparent', border: 0, color: 'var(--acc-1)', fontSize: 12, fontWeight: 600, cursor: 'pointer', padding: 0, fontFamily: 'var(--font)' }}>
+                  {descExpanded ? 'Show less' : 'Read more'}
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Version selector */}
@@ -1787,6 +1815,7 @@ const DashboardView = ({ ctx }) => {
         mod: {
           id: info.id, slug: info.slug, title: info.title, icon_url: info.icon_url,
           description: info.description, server_side: info.server_side, client_side: info.client_side,
+          categories: (info.categories || []).filter(c => !['fabric','forge','quilt','neoforge','liteloader'].includes(c)),
           installed_version: latestSv ? latestSv.version_number : 'Not Installed',
           server_candidates: svCands.map(v => v.version_number),
           target_version_number: latestTv ? latestTv.version_number : 'None Found',
@@ -2009,8 +2038,15 @@ const DashboardView = ({ ctx }) => {
                           ? <img src={hit.icon_url} alt="" style={{ width: 48, height: 48, borderRadius: 13, objectFit: 'cover', flexShrink: 0, boxShadow: '0 3px 10px rgba(0,0,0,0.45)' }} />
                           : <div style={{ width: 48, height: 48, borderRadius: 13, background: 'rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><Icon name="cube" style={{ color: 'var(--text-faint)', fontSize: 20 }} /></div>}
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 400, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '-0.01em', lineHeight: 1.2 }}>{hit.title}</div>
-                          <div style={{ fontSize: 12.5, color: 'var(--text-faint)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 4 }}>{hit.description}</div>
+                          <div style={{ fontFamily: 'var(--font)', fontSize: 15, fontWeight: 640, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '-0.015em', lineHeight: 1.2 }}>{hit.title}</div>
+                          <div style={{ fontSize: 12.5, color: 'var(--text-faint)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 3 }}>{hit.description}</div>
+                          {hit.categories && hit.categories.length > 0 && (
+                            <div style={{ display: 'flex', gap: 4, marginTop: 6, flexWrap: 'nowrap', overflow: 'hidden' }}>
+                              {hit.categories.filter(c => !['fabric','forge','quilt','neoforge','liteloader'].includes(c)).slice(0, 3).map(cat => (
+                                <span key={cat} style={{ fontSize: 10, fontWeight: 660, letterSpacing: '.04em', textTransform: 'capitalize', padding: '2px 7px', borderRadius: 99, background: 'rgba(255,255,255,0.08)', color: 'var(--text-faint)', border: '1px solid rgba(255,255,255,0.1)', whiteSpace: 'nowrap' }}>{cat}</span>
+                              ))}
+                            </div>
+                          )}
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
                           <span style={{ fontSize: 12, color: 'var(--text-ghost)', display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -2477,6 +2513,7 @@ function ModManager() {
           mod: {
             id: info.id, slug: info.slug, title: info.title, icon_url: info.icon_url,
             description: info.description, server_side: info.server_side, client_side: info.client_side,
+            categories: (info.categories || []).filter(c => !['fabric','forge','quilt','neoforge','liteloader'].includes(c)),
             installed_version: latestSv ? latestSv.version_number : 'Not Installed',
             server_candidates: svCands.map(v => v.version_number),
             target_version_number: latestTv ? latestTv.version_number : 'None Found',
@@ -2505,6 +2542,7 @@ function ModManager() {
       const latestServer = serverCandidates[0] || null, latestTarget = targetCandidates[0] || null;
       const newMod = {
         id: info.id, slug: info.slug, title: info.title, icon_url: info.icon_url, description: info.description,
+        categories: (info.categories || []).filter(c => !['fabric','forge','quilt','neoforge','liteloader'].includes(c)),
         server_side: info.server_side || null, client_side: info.client_side || null,
         installed_version: latestServer ? latestServer.version_number : 'Not Installed',
         server_candidates: serverCandidates.map(v => v.version_number),
@@ -2834,7 +2872,7 @@ function ModManager() {
     sortBy, setSortBy, filter, setFilter, toasts, addToast,
     newServerName, setNewServerName, newServerIP, setNewServerIP, fileInputRef, importStatus,
     attemptJoin, handleCreateServer, enterDemo, handleLogout, saveVersions, handleAddCustomMod, handleAddMod,
-    handleRemoveMod, handleRemoveConfirmed, handleApproveWishlist, handleVote, handleInstallMod, handleRemoveFromVM, handleVmSync,
+    handleRemoveMod, handleRemoveConfirmed, handleApproveWishlist, handleVote, handleInstallMod, handleRemoveFromVM, handleVmSync, handleSyncVersionsFromDisk,
     handleUpdateNote, handleToggleMod, handleVersionChange, handleSaveSettings, handleExportBackup, triggerImport, handleImportBackup, checkAllUpdates,
     activeDependencyIds, activeEditingMod, isSyncMismatch,
     dependencyOf
