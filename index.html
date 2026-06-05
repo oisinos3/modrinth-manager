@@ -132,41 +132,26 @@ html, body {
   text-rendering: optimizeLegibility;
 }
 
-/* ---------- Aurora wallpaper (behind everything) ---------- */
+/* ---------- Sunset Nine wallpaper ---------- */
 .wallpaper {
   position: fixed;
   inset: 0;
   z-index: -2;
-  overflow: hidden;
   background:
-    radial-gradient(120% 90% at 50% -10%, var(--bg-1), var(--bg-0) 60%);
+    radial-gradient(ellipse 80% 70% at 8% 90%, rgba(232, 80, 0, 0.72) 0%, rgba(210, 60, 0, 0.4) 30%, transparent 58%),
+    radial-gradient(ellipse 65% 55% at 92% 4%, rgba(22, 48, 190, 0.78) 0%, rgba(18, 40, 160, 0.45) 30%, transparent 58%),
+    radial-gradient(ellipse 50% 48% at 58% 58%, rgba(185, 65, 25, 0.28) 0%, transparent 52%),
+    radial-gradient(ellipse 44% 44% at 78% 82%, rgba(38, 118, 255, 0.28) 0%, transparent 50%),
+    radial-gradient(ellipse 30% 35% at 35% 15%, rgba(140, 60, 200, 0.22) 0%, transparent 50%),
+    #06080f;
 }
-.wallpaper .blob {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(90px);
-  opacity: 0.55;
-  will-change: transform;
-}
-.wallpaper .b1 { width: 46vw; height: 46vw; left: -8vw;  top: -10vw;  background: var(--blob-a); animation: drift1 26s ease-in-out infinite; }
-.wallpaper .b2 { width: 40vw; height: 40vw; right: -6vw; top: 4vw;    background: var(--blob-b); animation: drift2 32s ease-in-out infinite; }
-.wallpaper .b3 { width: 38vw; height: 38vw; left: 18vw;  bottom: -16vw; background: var(--blob-c); animation: drift3 30s ease-in-out infinite; }
-.wallpaper .b4 { width: 30vw; height: 30vw; right: 10vw; bottom: -10vw; background: var(--blob-d); animation: drift1 36s ease-in-out infinite reverse; }
 /* subtle grain/noise to avoid banding */
 .wallpaper::after {
   content: "";
   position: absolute; inset: 0;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
-  opacity: 0.035;
+  opacity: 0.028;
   mix-blend-mode: overlay;
-}
-
-@keyframes drift1 { 0%,100%{transform:translate(0,0) scale(1)} 50%{transform:translate(6vw,4vw) scale(1.12)} }
-@keyframes drift2 { 0%,100%{transform:translate(0,0) scale(1)} 50%{transform:translate(-5vw,6vw) scale(1.08)} }
-@keyframes drift3 { 0%,100%{transform:translate(0,0) scale(1.05)} 50%{transform:translate(4vw,-5vw) scale(1)} }
-
-@media (prefers-reduced-motion: reduce) {
-  .wallpaper .blob { animation: none !important; }
 }
 
 /* ============================================================
@@ -460,9 +445,16 @@ textarea.field { resize: none; line-height: 1.5; }
 
 .hairline { border-top: 1px solid var(--glass-border); }
 
-/* card hover lift */
+/* card hover lift + sparkle */
+@keyframes sparkleGlow {
+  0%,100% { box-shadow: 0 20px 50px -20px rgba(0,0,0,0.7), 0 0 0px 0 var(--acc-glow); }
+  50%      { box-shadow: 0 24px 56px -20px rgba(0,0,0,0.75), 0 0 22px 2px var(--acc-glow); }
+}
 .lift { transition: box-shadow .22s, border-color .22s; }
-.lift:hover { border-color: rgba(255,255,255,0.18); box-shadow: 0 20px 50px -20px rgba(0,0,0,0.7); }
+.lift:hover {
+  border-color: rgba(255,255,255,0.22);
+  animation: sparkleGlow 1.8s ease-in-out infinite;
+}
 
 .fade-in { animation: fadeIn .4s ease both; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
@@ -472,23 +464,18 @@ textarea.field { resize: none; line-height: 1.5; }
 
   </style>
   <style>
-    .mod-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; align-items: stretch; }
+    .mod-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 20px; align-items: stretch; }
     .hairline-l { border-left: 1px solid var(--glass-border); }
     @media (max-width: 860px) {
       .hero-grid { grid-template-columns: 1fr !important; }
       .hairline-l { border-left: 0 !important; padding-left: 0 !important; border-top: 1px solid var(--glass-border); padding-top: 16px; }
     }
     @media (max-width: 760px) { .hide-sm { display: none !important; } }
-    @media (max-width: 520px) { .mod-grid { grid-template-columns: 1fr; } }
+    @media (max-width: 600px) { .mod-grid { grid-template-columns: 1fr; } }
   </style>
 </head>
-<body class="theme-aurora">
-  <div class="wallpaper">
-    <div class="blob b1"></div>
-    <div class="blob b2"></div>
-    <div class="blob b3"></div>
-    <div class="blob b4"></div>
-  </div>
+<body class="theme-nebula">
+  <div class="wallpaper"></div>
 
   <div id="root"></div>
 
@@ -794,7 +781,7 @@ const DependencySection = ({ mod, allMods, onAdd, onEdit }) => {
 const ModCard = ({ mod, allMods, isCheckingUpdates, accessLevel, activeTab, onVersionChange,
   onApprove, onRemove, onAddDependency, onEditDependency, isModal = false, onUpdateNote,
   currentUser, onVote, onInstall, onInstallOpen, onRemoveFromVM, installStatus = {},
-  vmApiUrl, vmDiskFiles = null, upgradeExpanded = false }) => {
+  vmApiUrl, vmDiskFiles = null, upgradeExpanded = false, dependencyOf = {} }) => {
 
   const isLocked = mod.note && mod.noteAuthorId && mod.noteAuthorId !== currentUser?.uid && accessLevel !== 'admin';
   const isEnabled = mod.enabled !== false;
@@ -826,7 +813,7 @@ const ModCard = ({ mod, allMods, isCheckingUpdates, accessLevel, activeTab, onVe
   return (
     <Glass className={`lift ${isCheckingUpdates ? 'pulse' : ''}`}
       style={{
-        padding: 15, borderRadius: 'var(--r-md)', display: 'flex', flexDirection: 'column',
+        padding: 20, borderRadius: 'var(--r-md)', display: 'flex', flexDirection: 'column',
         opacity: isEnabled ? 1 : 0.5, filter: isEnabled ? 'none' : 'grayscale(0.7)',
         height: '100%',
       }}>
@@ -841,7 +828,7 @@ const ModCard = ({ mod, allMods, isCheckingUpdates, accessLevel, activeTab, onVe
           </div>
         )}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: 640, fontSize: 15, color: 'var(--text)', lineHeight: 1.25, letterSpacing: '-0.01em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{mod.title}</div>
+          <div style={{ fontWeight: 640, fontSize: 16, color: 'var(--text)', lineHeight: 1.25, letterSpacing: '-0.01em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{mod.title}</div>
           <div style={{ display: 'flex', gap: 5, marginTop: 7, flexWrap: 'wrap' }}>
             {!isEnabled && <Badge color="slate" icon="pause">Disabled</Badge>}
             {mod.isCustom && <Badge color="purple" icon="upload">Custom</Badge>}
@@ -877,7 +864,17 @@ const ModCard = ({ mod, allMods, isCheckingUpdates, accessLevel, activeTab, onVe
 
       {/* description (subtle) */}
       {mod.description && (
-        <p style={{ margin: '11px 0 0', fontSize: 12.5, color: 'var(--text-faint)', lineHeight: 1.45, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{mod.description}</p>
+        <p style={{ margin: '11px 0 0', fontSize: 13, color: 'var(--text-faint)', lineHeight: 1.45, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{mod.description}</p>
+      )}
+
+      {/* Needed by tag - shown for library/dependency mods */}
+      {dependencyOf[mod.id] && dependencyOf[mod.id].length > 0 && (
+        <div style={{ marginTop: 10, display: 'flex', gap: 5, flexWrap: 'wrap', alignItems: 'center' }}>
+          <span style={{ fontSize: 10, color: 'var(--text-faint)', fontWeight: 700, letterSpacing: '.07em', textTransform: 'uppercase', flexShrink: 0 }}>Needed by</span>
+          {dependencyOf[mod.id].map((title, i) => (
+            <span key={i} className="badge badge-slate" style={{ fontSize: 10.5 }}>{title}</span>
+          ))}
+        </div>
       )}
 
       <div style={{ flex: 1 }} />
@@ -911,9 +908,9 @@ const ModCard = ({ mod, allMods, isCheckingUpdates, accessLevel, activeTab, onVe
                 <Icon name="triangle-exclamation" style={{ fontSize: 11 }} /> Failed
               </span>
             ) : isOnDisk ? (
-              <button onClick={() => onRemoveFromVM(mod, selectedVersion)} title="Installed on VM - click to remove"
+              <button onClick={() => onRemoveFromVM(mod, selectedVersion)} title="On server - click to remove"
                 className="badge badge-green" style={{ cursor: 'pointer', flexShrink: 0, padding: '6px 11px' }}>
-                <Icon name="circle-check" style={{ fontSize: 11 }} /> Installed
+                <Icon name="circle-check" style={{ fontSize: 11 }} /> On Server
               </button>
             ) : (
               <Button size="sm" variant="glass" onClick={() => onInstallOpen ? onInstallOpen(mod, candidates, selectedVersion) : onInstall(mod, selectedVersion)}
@@ -1365,10 +1362,6 @@ const LoginView = ({ ctx }) => {
           </div>
           <Button variant="glass" block size="lg" onClick={() => setView('create')}><Icon name="plus" style={{ fontSize: 12 }} /> Create New Server</Button>
         </Glass>
-        <button onClick={enterDemo} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', marginTop: 16, background: 'transparent', border: 0, color: 'var(--text-faint)', fontSize: 13.5, fontWeight: 560, cursor: 'pointer', padding: 10 }}
-          onMouseEnter={e => e.currentTarget.style.color = 'var(--text)'} onMouseLeave={e => e.currentTarget.style.color = 'var(--text-faint)'}>
-          <Icon name="wand-magic-sparkles" style={{ fontSize: 12 }} /> Explore the demo dashboard - no code needed
-        </button>
       </div>
     </div>
   );
@@ -1467,11 +1460,6 @@ const AddModConfirmModal = ({ target, onClose, onAddListOnly, onAddAndInstall, v
                   <Icon name="circle-info" style={{ fontSize: 10 }} /> Migration build available: {mod.target_version_number}
                 </p>
               )}
-              {mod.target_version_number === 'None Found' && (
-                <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--warn)', display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <Icon name="triangle-exclamation" style={{ fontSize: 10 }} /> No build found for target version - may block migration
-                </p>
-              )}
             </div>
           ) : (
             <p style={{ marginBottom: 18, fontSize: 12.5, color: 'var(--warn)', display: 'flex', gap: 6 }}><Icon name="triangle-exclamation" style={{ fontSize: 12, marginTop: 1 }} /> No versions found for current server version. Mod may still be added.</p>
@@ -1482,9 +1470,10 @@ const AddModConfirmModal = ({ target, onClose, onAddListOnly, onAddAndInstall, v
               {vmApiUrl && (
                 <Button block onClick={handleListAndInstall} disabled={!selectedVersion && candidates.length > 0}>
                   <Icon name="cloud-arrow-down" style={{ fontSize: 13 }} />
-                  Add to list + install JAR to VM
+                  Add to list + install JAR to server
                 </Button>
               )}
+              <div style={{ height: vmApiUrl ? 10 : 0 }} />
               <Button variant="glass" block onClick={handleListOnly}>
                 <Icon name="list" style={{ fontSize: 13 }} />
                 {vmApiUrl ? 'Add to list only' : 'Add mod'}
@@ -1684,6 +1673,10 @@ const DashboardView = ({ ctx }) => {
     if (activeTab === 'active' && !showLibraries) list = list.filter(m => !activeDependencyIds.has(m.id));
     // Status filter
     if (filter === 'custom') list = list.filter(m => m.isCustom);
+    if (filter === 'missing') list = list.filter(m => !m.isCustom && m.target_version_number === 'None Found');
+    if (filter === 'not-installed') list = list.filter(m => vmDiskFiles !== null && !vmDiskFiles.some(f => f.startsWith(m.slug + '-') || f === m.slug + '.jar'));
+    if (filter === 'server-only') list = list.filter(m => m.server_side === 'required' && m.client_side === 'unsupported');
+    if (filter === 'client-only') list = list.filter(m => m.client_side === 'required' && m.server_side === 'unsupported');
     if (filterQuery.trim()) {
       const q = filterQuery.toLowerCase();
       list = list.filter(m => m.title.toLowerCase().includes(q) || (m.description || '').toLowerCase().includes(q));
@@ -1747,6 +1740,7 @@ const DashboardView = ({ ctx }) => {
     onUpdateNote: handleUpdateNote, onVote: handleVote, onInstall: handleInstallMod,
     onInstallOpen: (mod, candidates, initialVersion) => setInstallConfirmTarget({ mod, candidates, initialVersion }),
     onRemoveFromVM: handleRemoveFromVM, installStatus, vmApiUrl, vmDiskFiles, upgradeExpanded: showUpgradePanel,
+    dependencyOf,
   };
 
   const VersionSelect = ({ value, onChange, disabled }) => (
@@ -1758,9 +1752,9 @@ const DashboardView = ({ ctx }) => {
   return (
     <div style={{ minHeight: '100vh', paddingBottom: 60 }}>
       {/* ===== Top nav ===== */}
-      <div style={{ position: 'sticky', top: 0, zIndex: 40, padding: '14px 22px',
-        background: 'linear-gradient(180deg, rgba(5,7,13,0.7), rgba(5,7,13,0))', backdropFilter: 'blur(8px)' }}>
-        <div style={{ maxWidth: 1280, margin: '0 auto', display: 'flex', alignItems: 'center', gap: 16 }}>
+      <div style={{ position: 'sticky', top: 0, zIndex: 40, padding: '14px 28px',
+        background: 'linear-gradient(180deg, rgba(5,7,13,0.75), rgba(5,7,13,0))', backdropFilter: 'blur(12px)' }}>
+        <div style={{ maxWidth: 1440, margin: '0 auto', display: 'flex', alignItems: 'center', gap: 16 }}>
           <Brand size={38} />
           <div style={{ minWidth: 0 }}>
             <div style={{ fontSize: 16, fontWeight: 680, letterSpacing: '-0.01em', lineHeight: 1.1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{serverName}</div>
@@ -1774,33 +1768,40 @@ const DashboardView = ({ ctx }) => {
             </div>
           </div>
           <div style={{ flex: 1 }} />
-          <div className="hide-sm"><ThemeSwitcher theme={theme} setTheme={setTheme} /></div>
           {isAdmin && <IconBtn name="gear" title="Settings" onClick={() => setShowSettingsModal(true)} />}
           <IconBtn name="arrow-right-from-bracket" title="Leave" onClick={handleLogout} />
         </div>
       </div>
 
-      <div style={{ maxWidth: 1280, margin: '0 auto', padding: '8px 22px 0', display: 'flex', flexDirection: 'column', gap: 18 }}>
+      <div style={{ maxWidth: 1440, margin: '0 auto', padding: '8px 28px 0', display: 'flex', flexDirection: 'column', gap: 22 }}>
 
         {/* ===== Hero ===== */}
-        <Glass className="fade-in" style={{ padding: 22, borderRadius: 'var(--r-xl)' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <span className={`status-dot ${serverStatus?.online ? 'status-on' : 'status-off'}`} />
-                <span style={{ fontSize: 15, fontWeight: 620 }}>{serverStatus ? (serverStatus.online ? 'Online' : 'Offline') : 'Status unknown'}</span>
-                {serverStatus?.online && serverStatus.players && (
-                  <Badge color="green" icon="users">{serverStatus.players.online}/{serverStatus.players.max} online</Badge>
-                )}
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                <HeroStat icon="cube" label="Server mods" value={`${mods.length} · ${enabledCount} on`} tone="var(--acc-1)" />
-                <HeroStat icon="heart" label="Wishlist" value={`${wishlist.length} requested`} tone="var(--violet)" />
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                {serverIP ? <CopyChip value={serverIP} label="IP" icon="copy" /> : <span style={{ fontSize: 12.5, color: 'var(--text-ghost)' }}>No IP set</span>}
-                {panelUrl && <a href={panelUrl} target="_blank" rel="noreferrer" className="btn btn-glass btn-sm"><Icon name="gauge-high" style={{ fontSize: 12 }} /> Console</a>}
-              </div>
+        <Glass className="fade-in" style={{ padding: 26, borderRadius: 'var(--r-xl)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 32, flexWrap: 'wrap' }}>
+            {/* Status + server name */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+              <span className={`status-dot ${serverStatus?.online ? 'status-on' : 'status-off'}`} />
+              <span style={{ fontSize: 14, fontWeight: 620, color: serverStatus?.online ? 'var(--good)' : 'var(--text-faint)' }}>
+                {serverStatus ? (serverStatus.online ? 'Online' : 'Offline') : 'Unknown'}
+              </span>
+              {serverStatus?.online && serverStatus.players && (
+                <Badge color="green" icon="users">{serverStatus.players.online}/{serverStatus.players.max} online</Badge>
+              )}
             </div>
+            <div style={{ width: 1, height: 32, background: 'var(--glass-border)', flexShrink: 0 }} className="hide-sm" />
+            {/* Stats row */}
+            <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap' }}>
+              <HeroStat icon="cube" label="Server mods" value={`${mods.length} - ${enabledCount} active`} tone="var(--acc-1)" />
+              <HeroStat icon="heart" label="Wishlist" value={`${wishlist.length} requested`} tone="var(--violet)" />
+              {vmDiskFiles !== null && <HeroStat icon="hard-drive" label="On server" value={`${mods.filter(m => vmDiskFiles.some(f => f.startsWith(m.slug + '-') || f === m.slug + '.jar')).length}/${mods.length}`} tone="var(--info)" />}
+            </div>
+            <div style={{ flex: 1 }} />
+            {/* IP + panel */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              {serverIP ? <CopyChip value={serverIP} label="IP" icon="copy" /> : <span style={{ fontSize: 12.5, color: 'var(--text-ghost)' }}>No IP set</span>}
+              {panelUrl && <a href={panelUrl} target="_blank" rel="noreferrer" className="btn btn-glass btn-sm"><Icon name="gauge-high" style={{ fontSize: 12 }} /> Console</a>}
+            </div>
+          </div>
 
           {/* codes strip (admin) */}
           {isAdmin && (
@@ -1830,8 +1831,8 @@ const DashboardView = ({ ctx }) => {
           </div>
           <div style={{ width: 130 }} className="hide-sm">
             <Select value={sortBy} onChange={e => setSortBy(e.target.value)}>
-              <option value="name">Sort: A–Z</option>
-              <option value="nameDesc">Sort: Z–A</option>
+              <option value="name">Sort: A-Z</option>
+              <option value="nameDesc">Sort: Z-A</option>
               <option value="status">Sort: Ready</option>
               <option value="recent">Sort: Recent</option>
               {activeTab === 'wishlist' && <option value="votes">Sort: Votes</option>}
@@ -1850,12 +1851,6 @@ const DashboardView = ({ ctx }) => {
               {isSyncMismatch && <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--acc-1)', animation: 'pulse 1.5s infinite' }} />}
             </button>
           )}
-          {isAdmin && activeTab === 'active' && (
-            <Button variant="glass" size="" onClick={() => checkAllUpdates(mods, 'active')} disabled={checkingUpdates}>
-              <Icon name="arrows-rotate" className={checkingUpdates ? 'spin' : ''} style={{ fontSize: 12 }} /> {checkingUpdates ? 'Checking…' : 'Check Updates'}
-            </Button>
-          )}
-
           {/* overflow */}
           <div style={{ position: 'relative' }} ref={actionsRef}>
             <IconBtn name="ellipsis" title="More" active={showActionsMenu} onClick={() => setShowActionsMenu(v => !v)} />
@@ -1865,8 +1860,8 @@ const DashboardView = ({ ctx }) => {
                   { icon: 'terminal', label: 'Get migration script', on: () => setShowScriptModal(true) },
                   { icon: 'file-arrow-up', label: 'Add custom mod', on: () => setShowCustomModal(true) },
                   isAdmin && vmApiUrl && { icon: 'hard-drive', label: 'VM sync', on: handleVmSync },
-                  activeTab === 'active' && { icon: showUpgradePanel ? 'eye-slash' : 'layer-group', label: showUpgradePanel ? 'Hide dependencies' : 'Show dependencies', on: () => setShowUpgradePanel(v => !v) },
-                  activeTab === 'active' && libraryCount > 0 && { icon: showLibraries ? 'eye-slash' : 'eye', label: `${showLibraries ? 'Hide' : 'Show'} ${libraryCount} libraries`, on: () => setShowLibraries(v => !v) },
+                  activeTab === 'active' && { icon: showUpgradePanel ? 'eye-slash' : 'diagram-project', label: showUpgradePanel ? 'Hide dependency tree' : 'Show dependency tree', on: () => setShowUpgradePanel(v => !v) },
+                  activeTab === 'active' && libraryCount > 0 && { icon: showLibraries ? 'eye-slash' : 'layer-group', label: `${showLibraries ? 'Hide' : 'Show'} ${libraryCount} ${libraryCount === 1 ? 'library mod' : 'library mods'}`, on: () => setShowLibraries(v => !v) },
                   { icon: 'download', label: 'Export backup', on: handleExportBackup },
                   isAdmin && { icon: 'upload', label: 'Import backup', on: triggerImport },
                 ].filter(Boolean).map((a, i) => (
@@ -1924,23 +1919,28 @@ const DashboardView = ({ ctx }) => {
           </div>
         )}
 
-        {/* libraries hint */}
-        {activeTab === 'active' && libraryCount > 0 && !showLibraries && (
-          <button onClick={() => setShowLibraries(true)} style={{ alignSelf: 'flex-start', background: 'transparent', border: 0, color: 'var(--text-faint)', fontSize: 12.5, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 7, padding: 0 }}
+        {/* libraries toggle */}
+        {activeTab === 'active' && libraryCount > 0 && (
+          <button onClick={() => setShowLibraries(v => !v)} style={{ alignSelf: 'flex-start', background: 'transparent', border: 0, color: 'var(--text-faint)', fontSize: 12.5, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 7, padding: 0 }}
             onMouseEnter={e => e.currentTarget.style.color = 'var(--text-dim)'} onMouseLeave={e => e.currentTarget.style.color = 'var(--text-faint)'}>
-            <Icon name="layer-group" style={{ fontSize: 11 }} /> {libraryCount} library {libraryCount === 1 ? 'mod' : 'mods'} hidden - show
+            <Icon name={showLibraries ? 'eye-slash' : 'layer-group'} style={{ fontSize: 11 }} />
+            {showLibraries ? `Hide ${libraryCount} ${libraryCount === 1 ? 'library' : 'libraries'}` : `${libraryCount} library ${libraryCount === 1 ? 'mod' : 'mods'} hidden - show`}
           </button>
         )}
 
-        {/* ===== Filter tabs - Custom only ===== */}
+        {/* ===== Filter tags ===== */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
           {[
             { value: 'all', label: 'All' },
             { value: 'custom', label: 'Custom', color: 'var(--violet)' },
-          ].map(f => (
+            activeTab === 'active' && { value: 'missing', label: 'No Build', color: 'var(--bad)' },
+            activeTab === 'active' && vmDiskFiles !== null && { value: 'not-installed', label: 'Not on Server', color: 'var(--warn)' },
+            activeTab === 'active' && { value: 'server-only', label: 'Server Only', color: 'var(--good)' },
+            activeTab === 'active' && { value: 'client-only', label: 'Client Only', color: 'var(--info)' },
+          ].filter(Boolean).map(f => (
             <button key={f.value} onClick={() => setFilter(f.value)}
               style={{
-                padding: '5px 13px', borderRadius: 99, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', border: 0,
+                padding: '5px 14px', borderRadius: 99, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', border: 0,
                 background: filter === f.value ? (f.color ? `color-mix(in oklab, ${f.color} 18%, transparent)` : 'rgba(255,255,255,0.1)') : 'rgba(255,255,255,0.04)',
                 color: filter === f.value ? (f.color || 'var(--text)') : 'var(--text-faint)',
                 outline: filter === f.value ? `1px solid ${f.color ? `color-mix(in oklab, ${f.color} 35%, transparent)` : 'rgba(255,255,255,0.2)'}` : '1px solid transparent',
@@ -2064,7 +2064,7 @@ const DEMO_WISHLIST = [
 
 function ModManager() {
   // --- Theme ---
-  const [theme, setTheme] = useState(() => localStorage.getItem('mm-theme') || 'aurora');
+  const [theme, setTheme] = useState(() => { localStorage.removeItem('mm-theme'); return 'nebula'; });
   useEffect(() => {
     document.body.classList.remove('theme-aurora', 'theme-frost', 'theme-nebula');
     document.body.classList.add('theme-' + theme);
@@ -2607,7 +2607,14 @@ function ModManager() {
 
   // --- Derived ---
   const activeDependencyIds = new Set();
-  if (activeTab === 'active') mods.forEach(m => m.dependencies && m.dependencies.forEach(d => { if (d.dependency_type === 'required') activeDependencyIds.add(d.project_id); }));
+  const dependencyOf = {}; // {modId: [modTitle, ...]}
+  if (activeTab === 'active') mods.forEach(m => m.dependencies && m.dependencies.forEach(d => {
+    if (d.dependency_type === 'required') {
+      activeDependencyIds.add(d.project_id);
+      if (!dependencyOf[d.project_id]) dependencyOf[d.project_id] = [];
+      if (!dependencyOf[d.project_id].includes(m.title)) dependencyOf[d.project_id].push(m.title);
+    }
+  }));
   const activeEditingMod = editingDependencyId ? (activeTab === 'active' ? mods : wishlist).find(m => m.id === editingDependencyId) : null;
   const isSyncMismatch = activeTab === 'active' && syncedVersion && targetVersion && syncedVersion !== targetVersion;
 
