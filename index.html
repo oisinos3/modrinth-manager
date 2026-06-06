@@ -277,7 +277,7 @@ body {
 
 .btn-sm { padding: 6px 12px; font-size: 12.5px; }
 .btn-lg { padding: 13px 22px; font-size: 15px; }
-.btn-icon { padding: 9px; border-radius: 50%; }
+.btn-icon { padding: 9px; border-radius: 50%; will-change: transform; }
 .btn-block { width: 100%; }
 
 /* ============================================================
@@ -870,11 +870,10 @@ const ModCard = ({ mod, allMods, isCheckingUpdates, accessLevel, activeTab, onVe
     <Glass className={`lift ${isCheckingUpdates ? 'pulse' : ''}`}
       style={{
         padding: 20, borderRadius: 'var(--r-md)', display: 'flex', flexDirection: 'column',
-        opacity: isEnabled ? 1 : 0.55, filter: 'none',
         height: '100%',
       }}>
 
-      {/* Top: icon + title + badges + actions */}
+      {!isEnabled && <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.45)', borderRadius: 'inherit', zIndex: 1, pointerEvents: 'none' }} />}
       <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
         {mod.icon_url ? (
           <img src={mod.icon_url} alt="" style={{ width: 46, height: 46, borderRadius: 12, objectFit: 'cover', background: 'rgba(0,0,0,0.3)', flexShrink: 0, boxShadow: '0 4px 12px -4px rgba(0,0,0,0.6)' }} />
@@ -891,7 +890,7 @@ const ModCard = ({ mod, allMods, isCheckingUpdates, accessLevel, activeTab, onVe
             {activeTab === 'active' && vmDiskFiles !== null && (
               isOnDisk
                 ? isDisabledOnDisk
-                  ? <span className="badge" style={{ background: 'rgba(255,207,74,0.25)', color: '#ffe14a', borderColor: 'rgba(255,207,74,0.8)', boxShadow: '0 0 12px rgba(255,207,74,0.45)', fontWeight: 700 }}><Icon name="pause" style={{ fontSize: 9 }} /> Disabled on server</span>
+                  ? <span className="badge" style={{ background: 'rgba(255,207,74,0.25)', color: '#ffe14a', borderColor: 'rgba(255,207,74,0.8)', boxShadow: '0 0 12px rgba(255,207,74,0.45)', fontWeight: 700, position: 'relative', zIndex: 2 }}><Icon name="pause" style={{ fontSize: 9 }} /> Disabled on server</span>
                   : <Badge color="green" icon="circle-check">On server</Badge>
                 : <Badge color="slate" icon="hard-drive">Not installed</Badge>
             )}
@@ -2125,7 +2124,7 @@ const DashboardView = ({ ctx }) => {
         </div>
 
         {/* ===== Toolbar ===== */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', position: 'relative', zIndex: 10 }}>
           <Segmented value={activeTab} onChange={(v) => { setActiveTab(v); setError(null); setFilter('all'); }} accent
             options={[
               { value: 'active', label: 'Server Mods', icon: 'cube', count: mods.length },
@@ -2162,7 +2161,7 @@ const DashboardView = ({ ctx }) => {
             </button>
           )}
           {/* overflow */}
-          <div style={{ position: 'relative', isolation: 'isolate' }} ref={actionsRef}>
+          <div style={{ position: 'relative' }} ref={actionsRef}>
             <IconBtn name="ellipsis" title="More" active={showActionsMenu} onClick={() => setShowActionsMenu(v => !v)} />
             {showActionsMenu && (
               <div className="fade-in" style={{ position: 'absolute', right: 0, top: 46, width: 240, padding: 7, zIndex: 50, borderRadius: 18, background: 'rgba(12,18,38,0.99)', border: '1px solid var(--glass-border)', boxShadow: '0 4px 16px rgba(0,0,0,0.6)', transform: 'translateZ(0)' }}>
