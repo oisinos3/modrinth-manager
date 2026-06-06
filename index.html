@@ -1866,7 +1866,7 @@ const DashboardView = ({ ctx }) => {
           {/* Left: brand + server name */}
           <Brand size={36} />
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: '-0.01em', lineHeight: 1.1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{serverName}</div>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 400, letterSpacing: '-0.01em', lineHeight: 1.1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{serverName}</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 2 }}>
               <span style={{ fontSize: 11, color: 'var(--text-faint)', display: 'flex', alignItems: 'center', gap: 5 }}>
                 <Icon name={isSyncing ? 'arrows-rotate' : 'circle-nodes'} className={isSyncing ? 'spin' : ''} style={{ fontSize: 9 }} />
@@ -2015,13 +2015,13 @@ const DashboardView = ({ ctx }) => {
           <div style={{ position: 'relative' }} ref={actionsRef}>
             <IconBtn name="ellipsis" title="More" active={showActionsMenu} onClick={() => setShowActionsMenu(v => !v)} />
             {showActionsMenu && (
-              <Glass strong className="fade-in" style={{ position: 'absolute', right: 0, top: 46, width: 240, padding: 7, zIndex: 50, borderRadius: 18, boxShadow: '0 8px 28px -4px rgba(0,0,0,0.55), 0 2px 8px -2px rgba(0,0,0,0.3)' }}>
+              <Glass strong className="fade-in" style={{ position: 'absolute', right: 0, top: 46, width: 240, padding: 7, zIndex: 50, borderRadius: 18, boxShadow: '0 4px 18px -4px rgba(0,0,0,0.55), 0 1px 6px -2px rgba(0,0,0,0.3)', transform: 'translateZ(0)' }}>
                 {[
                   // Group 1: add / script
                   [
                     { icon: 'terminal', label: 'Get migration script', on: () => setShowScriptModal(true) },
-                    { icon: 'file-arrow-up', label: 'Add custom mod', on: () => setShowCustomModal(true) },
-                  ],
+                    isAdmin && { icon: 'file-arrow-up', label: 'Add custom mod', on: () => setShowCustomModal(true) },
+                  ].filter(Boolean),
                   // Group 2: VM / sync
                   [
                     isAdmin && vmApiUrl && { icon: 'hard-drive', label: 'VM sync', on: handleVmSync },
@@ -2170,7 +2170,7 @@ const DashboardView = ({ ctx }) => {
             {!filterQuery && filter === 'all' && <Button onClick={() => setShowAddMod(true)} style={{ marginTop: 18 }}><Icon name="plus" style={{ fontSize: 12 }} /> Add a mod</Button>}
           </Glass>
         ) : (
-          <div className="mod-grid">
+          <div className="mod-grid" style={{ isolation: 'isolate' }}>
             {visible.map(mod => <ModCard key={mod.id} mod={mod} {...cardProps} />)}
           </div>
         )}
