@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#1e3060" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <title>Modrinth Manager</title>
 
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" />
@@ -184,7 +187,7 @@ body {
   content: "";
   position: absolute; inset: 0;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.72' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
-  opacity: 0.22;
+  opacity: 0.30;
   mix-blend-mode: overlay;
 }
 
@@ -243,6 +246,7 @@ body {
   transition: transform .14s cubic-bezier(.2,.8,.2,1), box-shadow .2s, background .2s, border-color .2s, opacity .2s;
   white-space: nowrap;
   user-select: none;
+  text-decoration: none; /* prevents underline on <a> styled as button */
 }
 .btn:active { transform: scale(0.96); }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
@@ -376,14 +380,19 @@ textarea.field { resize: none; line-height: 1.5; }
   color: var(--text);
   background: rgba(0,0,0,0.28);
   border: 1px solid var(--glass-border);
-  border-radius: var(--r-sm);
-  padding: 9px 34px 9px 13px;
+  border-radius: var(--r-md); /* rounder to match the rest of the UI */
+  padding: 10px 36px 10px 14px;
   cursor: pointer;
   transition: border-color .2s, box-shadow .2s;
 }
 .select-wrap select:focus { outline: none; border-color: color-mix(in oklab, var(--acc-2) 70%, transparent); box-shadow: 0 0 0 4px var(--acc-soft); }
-.select-wrap .chev { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: var(--text-faint); pointer-events: none; font-size: 11px; }
+.select-wrap .chev { position: absolute; right: 13px; top: 50%; transform: translateY(-50%); color: var(--text-faint); pointer-events: none; font-size: 11px; }
 .select-wrap select option { background: #1d2b48; color: var(--text); }
+
+/* 1440p scale-up - zoom entire root content ~15% */
+@media (min-width: 1380px) {
+  #root { zoom: 1.13; }
+}
 
 /* ============================================================
    MODALS
@@ -410,10 +419,10 @@ textarea.field { resize: none; line-height: 1.5; }
 }
 .sheet::before {
   content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px;
-  background: linear-gradient(180deg, var(--glass-hi), rgba(255,255,255,0) 22%);
+  background: linear-gradient(180deg, var(--glass-hi), rgba(255,255,255,0) 30%);
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor; mask-composite: exclude;
-  pointer-events: none; opacity: 0.85;
+  pointer-events: none; opacity: 1;
 }
 @keyframes scrimIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes sheetIn { from { opacity: 0; transform: translateY(16px) scale(0.97); } to { opacity: 1; transform: none; } }
@@ -1547,7 +1556,7 @@ const AddModConfirmModal = ({ target, onClose, onAddListOnly, onAddAndInstall, v
                   Add to list + install JAR to server
                 </Button>
               )}
-              <div style={{ height: vmApiUrl ? 10 : 0 }} />
+              <div style={{ height: vmApiUrl ? 5 : 0 }} />
               <Button variant="glass" block onClick={handleListOnly}>
                 <Icon name="list" style={{ fontSize: 13 }} />
                 {vmApiUrl ? 'Add to list only' : 'Add mod'}
@@ -1738,7 +1747,7 @@ const DashboardView = ({ ctx }) => {
     removeConfirmTarget, setRemoveConfirmTarget, installConfirmTarget, setInstallConfirmTarget, addModConfirmTarget, setAddModConfirmTarget, sortBy, setSortBy, filter, setFilter,
     toasts, addToast, fileInputRef, user, isSyncing,
     saveVersions, handleAddCustomMod, handleAddMod, handleRemoveMod, handleRemoveConfirmed, handleApproveWishlist,
-    handleVote, handleInstallMod, handleRemoveFromVM, handleVmSync, handleSyncVersionsFromDisk, handleUpdateNote, handleVersionChange,
+    handleVote, handleInstallMod, handleRemoveFromVM, handleVmSync, handleSyncVersionsFromDisk, handleSyncTagsFromModrinth, handleUpdateNote, handleVersionChange,
     handleSaveSettings, handleExportBackup, triggerImport, handleImportBackup, checkAllUpdates, handleLogout,
     activeDependencyIds, activeEditingMod, isSyncMismatch,
     dependencyOf
@@ -1913,10 +1922,11 @@ const DashboardView = ({ ctx }) => {
               <div style={{ flex: 1 }} />
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 {serverIP ? <CopyChip value={serverIP} label="IP" icon="copy" /> : null}
-                {panelUrl && <a href={panelUrl} target="_blank" rel="noreferrer" className="btn btn-glass btn-sm"><Icon name="gauge-high" style={{ fontSize: 12 }} /> Console</a>}
+                {isAdmin && panelUrl && <a href={panelUrl} target="_blank" rel="noreferrer" className="btn btn-glass btn-sm"><Icon name="gauge-high" style={{ fontSize: 12 }} /> Console</a>}
               </div>
             </div>
 
+            {/* Admin: show both codes + invite */}
             {isAdmin && (
               <div style={{ marginTop: 18, paddingTop: 16, borderTop: '1px solid var(--glass-border)', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                 <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--text-faint)', marginRight: 4 }}>
@@ -1924,6 +1934,17 @@ const DashboardView = ({ ctx }) => {
                 </span>
                 <CopyChip value={sessionCodes.admin} label="Admin" mono />
                 <CopyChip value={sessionCodes.user} label="Member" mono />
+                <button onClick={() => { const url = `${window.location.origin}${window.location.pathname}?code=${sessionCodes.user}`; if (copyToClipboard(url)) addToast('Invite link copied'); }}
+                  className="btn btn-glass btn-sm"><Icon name="link" style={{ fontSize: 11 }} /> Copy invite link</button>
+              </div>
+            )}
+            {/* Member: show their own code + invite link */}
+            {!isAdmin && sessionCodes.user && (
+              <div style={{ marginTop: 18, paddingTop: 16, borderTop: '1px solid var(--glass-border)', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--text-faint)', marginRight: 4 }}>
+                  <Icon name="link" style={{ fontSize: 10, marginRight: 6 }} />Invite
+                </span>
+                <CopyChip value={sessionCodes.user} label="Code" mono />
                 <button onClick={() => { const url = `${window.location.origin}${window.location.pathname}?code=${sessionCodes.user}`; if (copyToClipboard(url)) addToast('Invite link copied'); }}
                   className="btn btn-glass btn-sm"><Icon name="link" style={{ fontSize: 11 }} /> Copy invite link</button>
               </div>
@@ -1994,23 +2015,41 @@ const DashboardView = ({ ctx }) => {
           <div style={{ position: 'relative' }} ref={actionsRef}>
             <IconBtn name="ellipsis" title="More" active={showActionsMenu} onClick={() => setShowActionsMenu(v => !v)} />
             {showActionsMenu && (
-              <Glass strong className="fade-in" style={{ position: 'absolute', right: 0, top: 46, width: 230, padding: 7, zIndex: 50, borderRadius: 16 }}>
+              <Glass strong className="fade-in" style={{ position: 'absolute', right: 0, top: 46, width: 240, padding: 7, zIndex: 50, borderRadius: 18, boxShadow: '0 8px 28px -4px rgba(0,0,0,0.55), 0 2px 8px -2px rgba(0,0,0,0.3)' }}>
                 {[
-                  { icon: 'terminal', label: 'Get migration script', on: () => setShowScriptModal(true) },
-                  { icon: 'file-arrow-up', label: 'Add custom mod', on: () => setShowCustomModal(true) },
-                  isAdmin && vmApiUrl && { icon: 'hard-drive', label: 'VM sync', on: handleVmSync },
-                  isAdmin && vmApiUrl && { icon: 'rotate', label: 'Sync versions from disk', on: handleSyncVersionsFromDisk },
-                  activeTab === 'active' && { icon: showUpgradePanel ? 'eye-slash' : 'diagram-project', label: showUpgradePanel ? 'Hide dependency tree' : 'Show dependency tree', on: () => setShowUpgradePanel(v => !v) },
-                  activeTab === 'active' && libraryCount > 0 && { icon: showLibraries ? 'eye-slash' : 'layer-group', label: `${showLibraries ? 'Hide' : 'Show'} ${libraryCount} ${libraryCount === 1 ? 'library mod' : 'library mods'}`, on: () => setShowLibraries(v => !v) },
-                  { icon: 'download', label: 'Export backup', on: handleExportBackup },
-                  isAdmin && { icon: 'upload', label: 'Import backup', on: triggerImport },
-                ].filter(Boolean).map((a, i) => (
-                  <button key={i} onClick={() => { a.on(); setShowActionsMenu(false); }}
-                    style={{ display: 'flex', alignItems: 'center', gap: 11, width: '100%', padding: '10px 11px', background: 'transparent', border: 0, borderRadius: 10, color: 'var(--text-dim)', fontSize: 13.5, fontWeight: 540, cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font)', transition: 'all .15s' }}
-                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.07)'; e.currentTarget.style.color = 'var(--text)'; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-dim)'; }}>
-                    <Icon name={a.icon} style={{ fontSize: 13, width: 16, textAlign: 'center' }} /> {a.label}
-                  </button>
+                  // Group 1: add / script
+                  [
+                    { icon: 'terminal', label: 'Get migration script', on: () => setShowScriptModal(true) },
+                    { icon: 'file-arrow-up', label: 'Add custom mod', on: () => setShowCustomModal(true) },
+                  ],
+                  // Group 2: VM / sync
+                  [
+                    isAdmin && vmApiUrl && { icon: 'hard-drive', label: 'VM sync', on: handleVmSync },
+                    isAdmin && vmApiUrl && { icon: 'rotate', label: 'Sync versions from disk', on: handleSyncVersionsFromDisk },
+                    isAdmin && { icon: 'tags', label: 'Sync tags from Modrinth', on: handleSyncTagsFromModrinth },
+                  ].filter(Boolean),
+                  // Group 3: view toggles
+                  [
+                    activeTab === 'active' && { icon: showUpgradePanel ? 'eye-slash' : 'diagram-project', label: showUpgradePanel ? 'Hide dependency tree' : 'Show dependency tree', on: () => setShowUpgradePanel(v => !v) },
+                    activeTab === 'active' && libraryCount > 0 && { icon: showLibraries ? 'eye-slash' : 'layer-group', label: `${showLibraries ? 'Hide' : 'Show'} ${libraryCount} ${libraryCount === 1 ? 'library mod' : 'library mods'}`, on: () => setShowLibraries(v => !v) },
+                  ].filter(Boolean),
+                  // Group 4: backup
+                  [
+                    { icon: 'download', label: 'Export backup', on: handleExportBackup },
+                    isAdmin && { icon: 'upload', label: 'Import backup', on: triggerImport },
+                  ].filter(Boolean),
+                ].filter(g => g.length > 0).map((group, gi, arr) => (
+                  <React.Fragment key={gi}>
+                    {gi > 0 && <div style={{ height: 1, background: 'var(--glass-border)', margin: '5px 8px', opacity: 0.7 }} />}
+                    {group.map((a, i) => (
+                      <button key={i} onClick={() => { a.on(); setShowActionsMenu(false); }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 11, width: '100%', padding: '10px 11px', background: 'transparent', border: 0, borderRadius: 10, color: 'var(--text-dim)', fontSize: 13.5, fontWeight: 540, cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font)', transition: 'all .15s' }}
+                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.07)'; e.currentTarget.style.color = 'var(--text)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-dim)'; }}>
+                        <Icon name={a.icon} style={{ fontSize: 13, width: 16, textAlign: 'center' }} /> {a.label}
+                      </button>
+                    ))}
+                  </React.Fragment>
                 ))}
               </Glass>
             )}
@@ -2074,15 +2113,26 @@ const DashboardView = ({ ctx }) => {
           </div>
         )}
 
-        {/* libraries toggle */}
-        {activeTab === 'active' && libraryCount > 0 && (
-          <button onClick={() => setShowLibraries(v => !v)}
-            style={{ alignSelf: 'flex-start', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 99, color: 'var(--text-dim)', fontSize: 13, fontWeight: 580, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, padding: '5px 14px', fontFamily: 'var(--font)', transition: 'all .15s' }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = 'var(--text)'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = 'var(--text-dim)'; }}>
-            <Icon name={showLibraries ? 'eye-slash' : 'layer-group'} style={{ fontSize: 12 }} />
-            {showLibraries ? `Hide ${libraryCount} ${libraryCount === 1 ? 'library' : 'libraries'}` : `${libraryCount} ${libraryCount === 1 ? 'library mod' : 'library mods'} hidden`}
-          </button>
+        {/* view toggles: libraries + dependency tree */}
+        {activeTab === 'active' && (libraryCount > 0 || true) && (
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {libraryCount > 0 && (
+              <button onClick={() => setShowLibraries(v => !v)}
+                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 99, color: 'var(--text-dim)', fontSize: 13, fontWeight: 580, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, padding: '5px 14px', fontFamily: 'var(--font)', transition: 'all .15s' }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = 'var(--text)'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = 'var(--text-dim)'; }}>
+                <Icon name={showLibraries ? 'eye-slash' : 'layer-group'} style={{ fontSize: 12 }} />
+                {showLibraries ? `Hide ${libraryCount} ${libraryCount === 1 ? 'library' : 'libraries'}` : `${libraryCount} ${libraryCount === 1 ? 'library mod' : 'library mods'} hidden`}
+              </button>
+            )}
+            <button onClick={() => setShowUpgradePanel(v => !v)}
+              style={{ background: showUpgradePanel ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 99, color: showUpgradePanel ? 'var(--text)' : 'var(--text-dim)', fontSize: 13, fontWeight: 580, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, padding: '5px 14px', fontFamily: 'var(--font)', transition: 'all .15s' }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = 'var(--text)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = showUpgradePanel ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = showUpgradePanel ? 'var(--text)' : 'var(--text-dim)'; }}>
+              <Icon name={showUpgradePanel ? 'eye-slash' : 'diagram-project'} style={{ fontSize: 12 }} />
+              {showUpgradePanel ? 'Hide dependency tree' : 'Show dependency tree'}
+            </button>
+          </div>
         )}
 
         {/* ===== Filter tags ===== */}
@@ -2729,6 +2779,33 @@ function ModManager() {
     finally { setLoading(false); }
   };
 
+  // Fetches categories/tags from Modrinth for all mods that are missing them and saves to Firestore
+  const handleSyncTagsFromModrinth = async () => {
+    const loaderTags = new Set(['fabric','forge','quilt','neoforge','liteloader']);
+    const toUpdate = mods.filter(m => !m.isCustom && (!m.categories || m.categories.length === 0));
+    if (toUpdate.length === 0) { addToast('All mods already have tags', 'info'); return; }
+    setLoading(true);
+    try {
+      const BATCH = 6, delay = ms => new Promise(r => setTimeout(r, ms));
+      let working = [...mods];
+      for (let i = 0; i < toUpdate.length; i += BATCH) {
+        const batch = toUpdate.slice(i, i + BATCH);
+        const results = await Promise.all(batch.map(async mod => {
+          try {
+            const info = await fetch(`${MODRINTH_API_BASE}/project/${mod.slug}`).then(r => r.ok ? r.json() : null);
+            if (!info) return mod;
+            return { ...mod, categories: (info.categories || []).filter(c => !loaderTags.has(c)) };
+          } catch { return mod; }
+        }));
+        results.forEach(u => { const idx = working.findIndex(m => m.id === u.id); if (idx !== -1) working[idx] = u; });
+        if (i + BATCH < toUpdate.length) await delay(800);
+      }
+      await saveToServer(working, null);
+      addToast(`Tags synced for ${toUpdate.length} mod${toUpdate.length === 1 ? '' : 's'}`);
+    } catch (err) { addToast(`Tag sync failed: ${err.message}`, 'error'); }
+    finally { setLoading(false); }
+  };
+
   const handleVmSync = async () => {
     if (!vmApiUrl) return;
     setVmSyncLoading(true); setShowVmSyncModal(true); setVmSyncData(null);
@@ -2872,7 +2949,7 @@ function ModManager() {
     sortBy, setSortBy, filter, setFilter, toasts, addToast,
     newServerName, setNewServerName, newServerIP, setNewServerIP, fileInputRef, importStatus,
     attemptJoin, handleCreateServer, enterDemo, handleLogout, saveVersions, handleAddCustomMod, handleAddMod,
-    handleRemoveMod, handleRemoveConfirmed, handleApproveWishlist, handleVote, handleInstallMod, handleRemoveFromVM, handleVmSync, handleSyncVersionsFromDisk,
+    handleRemoveMod, handleRemoveConfirmed, handleApproveWishlist, handleVote, handleInstallMod, handleRemoveFromVM, handleVmSync, handleSyncVersionsFromDisk, handleSyncTagsFromModrinth,
     handleUpdateNote, handleToggleMod, handleVersionChange, handleSaveSettings, handleExportBackup, triggerImport, handleImportBackup, checkAllUpdates,
     activeDependencyIds, activeEditingMod, isSyncMismatch,
     dependencyOf
