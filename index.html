@@ -196,6 +196,7 @@ body {
    ============================================================ */
 .glass {
   position: relative;
+  isolation: isolate;
   background: var(--glass-bg);
   backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat));
   -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat));
@@ -209,6 +210,7 @@ body {
 .glass::before {
   content: "";
   position: absolute; inset: 0;
+  isolation: isolate;
   border-radius: inherit;
   padding: 1px;
   background: linear-gradient(180deg, var(--glass-hi), rgba(255,255,255,0) 28%);
@@ -221,13 +223,16 @@ body {
 .glass::after {
   content: "";
   position: absolute; inset: 0;
+  isolation: isolate;
   border-radius: inherit;
   background: linear-gradient(160deg, rgba(255,255,255,0.10), rgba(255,255,255,0) 40%);
   pointer-events: none;
   opacity: 0.6;
 }
-.glass-strong { background: var(--glass-bg-strong); }
-.glass-flat::after { display: none; }
+.glass-strong { background: var(--glass-bg-strong); 
+  isolation: isolate;}
+.glass-flat::after { display: none; 
+  isolation: isolate;}
 
 /* ============================================================
    BUTTONS
