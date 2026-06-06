@@ -277,7 +277,7 @@ body {
 
 .btn-sm { padding: 6px 12px; font-size: 12.5px; }
 .btn-lg { padding: 13px 22px; font-size: 15px; }
-.btn-icon { padding: 9px; border-radius: 50%; will-change: transform; }
+.btn-icon { padding: 8px; border-radius: 12px; will-change: transform; }
 .btn-block { width: 100%; }
 
 /* ============================================================
@@ -2050,6 +2050,19 @@ const DashboardView = ({ ctx }) => {
 
           {/* Right: actions */}
           {isAdmin && <IconBtn name="gear" title="Settings" onClick={() => setShowSettingsModal(true)} />}
+          <div style={{ position: 'relative' }}>
+            <IconBtn name="ellipsis-vertical" title="Actions" onClick={() => setShowActionsMenu(!showActionsMenu)} active={showActionsMenu} />
+            {showActionsMenu && (
+              <Glass style={{ position: 'absolute', right: 0, top: '100%', marginTop: 8, padding: 8, zIndex: 1000, width: 160 }}>
+                <button className="btn btn-ghost" style={{ width: '100%', justifyContent: 'flex-start' }} onClick={() => { setShowActionsMenu(false); /* Add your function here */ }}>
+                  <Icon name="file-export" style={{ marginRight: 8 }} /> Export
+                </button>
+                <button className="btn btn-ghost" style={{ width: '100%', justifyContent: 'flex-start' }} onClick={() => { setShowActionsMenu(false); /* Add your function here */ }}>
+                  <Icon name="trash" style={{ marginRight: 8 }} /> Clear All
+                </button>
+              </Glass>
+            )}
+          </div>
           <IconBtn name="arrow-right-from-bracket" title="Leave" onClick={handleLogout} />
         </div>
       </div>
@@ -2486,7 +2499,8 @@ function ModManager() {
   const [installStatus, setInstallStatus] = useState({});
   const [vmDiskFiles, setVmDiskFiles] = useState(null);
   const [showUpgradePanel, setShowUpgradePanel] = useState(false);
-  const [showMigrationModal, setShowMigrationModal] = useState(false);
+  const [showActionsMenu, setShowActionsMenu] = useState(false); // Added
+  const [showVmSyncModal, setShowVmSyncModal] = useState(false);
   const [showActionsMenu, setShowActionsMenu] = useState(false);
   const [showVmSyncModal, setShowVmSyncModal] = useState(false);
   const [vmSyncData, setVmSyncData] = useState(null);
