@@ -674,7 +674,7 @@ const ToastStack = ({ toasts }) => (
 const IconBtn = ({ name, onClick, title, className = "", active = false, danger = false }) => (
   <button onClick={onClick} title={title}
     className={`btn btn-icon ${active ? 'btn-glass' : 'btn-ghost'} ${className}`}
-    style={danger ? { color: 'var(--bad)' } : undefined}>
+    style={{ backdropFilter: 'none', WebkitBackdropFilter: 'none', ...(danger ? { color: 'var(--bad)' } : {}) }}>
     <Icon name={name} style={{ fontSize: 14 }} />
   </button>
 );
@@ -842,6 +842,7 @@ const ModCard = ({ mod, allMods, isCheckingUpdates, accessLevel, activeTab, onVe
       base.startsWith(mod.slug + '-') || base === mod.slug + '.jar';
   });
   const isDisabledOnDisk = isOnDisk && vmDiskFiles.some(f => f.endsWith('.jar.disabled') && (
+    (mod.installedJarFile && f.replace(/\.disabled$/, '') === mod.installedJarFile) ||
     f.replace(/\.disabled$/, '').startsWith(mod.slug + '-') || f.replace(/\.disabled$/, '') === mod.slug + '.jar'
   ));
   const canInstall = vmApiUrl && activeTab === 'active' && accessLevel === 'admin' &&
@@ -881,13 +882,12 @@ const ModCard = ({ mod, allMods, isCheckingUpdates, accessLevel, activeTab, onVe
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontWeight: 640, fontSize: 16, color: 'var(--text)', lineHeight: 1.25, letterSpacing: '-0.01em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{mod.title}</div>
           <div style={{ display: 'flex', gap: 5, marginTop: 7, flexWrap: 'wrap' }}>
-            {!isEnabled && <Badge color="slate" icon="pause">Disabled</Badge>}
             {mod.isCustom && <Badge color="purple" icon="upload">Custom</Badge>}
             {sideLabel && <Badge color={sideLabel.color}>{sideLabel.label}</Badge>}
             {activeTab === 'active' && vmDiskFiles !== null && (
               isOnDisk
                 ? isDisabledOnDisk
-                  ? <Badge color="yellow" icon="pause">Disabled on server</Badge>
+                  ? <span className="badge" style={{ background: 'rgba(255,207,74,0.25)', color: '#ffe14a', borderColor: 'rgba(255,207,74,0.8)', boxShadow: '0 0 12px rgba(255,207,74,0.45)', fontWeight: 700 }}><Icon name="pause" style={{ fontSize: 9 }} /> Disabled on server</span>
                   : <Badge color="green" icon="circle-check">On server</Badge>
                 : <Badge color="slate" icon="hard-drive">Not installed</Badge>
             )}
@@ -1888,7 +1888,7 @@ const DashboardView = ({ ctx }) => {
     toasts, addToast, fileInputRef, user, isSyncing,
     heroNote, handleSaveHeroNote,
     saveVersions, handleAddCustomMod, handleAddMod, handleRemoveMod, handleRemoveConfirmed, handleApproveWishlist,
-    handleVote, handleInstallMod, handleRemoveFromVM, handleVmSync, handleSyncVersionsFromDisk, handleSyncTagsFromModrinth, handleUpdateNote, handleToggleMod, handleVersionChange,
+    handleVote, handleInstallMod, handleRemoveFromVM, handleVmSync, handleSyncVersionsFromDisk, handleSyncTagsFromModrinth, handleBatchReinstall, handleUpdateNote, handleToggleMod, handleVersionChange,
     handleSaveSettings, handleExportBackup, triggerImport, handleImportBackup, checkAllUpdates, handleLogout,
     activeDependencyIds, activeEditingMod, isSyncMismatch,
     dependencyOf
@@ -2158,10 +2158,10 @@ const DashboardView = ({ ctx }) => {
             </button>
           )}
           {/* overflow */}
-          <div style={{ position: 'relative' }} ref={actionsRef}>
+          <div style={{ position: 'relative', isolation: 'isolate' }} ref={actionsRef}>
             <IconBtn name="ellipsis" title="More" active={showActionsMenu} onClick={() => setShowActionsMenu(v => !v)} />
             {showActionsMenu && (
-              <div className="fade-in" style={{ position: 'absolute', right: 0, top: 46, width: 240, padding: 7, zIndex: 50, borderRadius: 18, background: 'rgba(14,20,42,0.98)', border: '1px solid var(--glass-border)', boxShadow: '0 4px 18px -4px rgba(0,0,0,0.6)', transform: 'translateZ(0)' }}>
+              <div className="fade-in" style={{ position: 'absolute', right: 0, top: 46, width: 240, padding: 7, zIndex: 500, borderRadius: 18, background: 'rgba(12,18,38,0.99)', border: '1px solid var(--glass-border)', boxShadow: '0 8px 30px rgba(0,0,0,0.7)', transform: 'translateZ(0)' }}>
                 {[
                   // Group 1: add / script
                   [
