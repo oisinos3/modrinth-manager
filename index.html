@@ -2843,7 +2843,11 @@ function ModManager() {
       }
       const res = await fetch(`${vmBase()}/install`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': VM_API_KEY }, body: JSON.stringify({ url: downloadUrl, filename, slug: mod.slug }) });
       if (!res.ok) throw new Error(`VM responded ${res.status}`);
-      setVmDiskFiles(p => p ? [...p.filter(f => !f.startsWith(mod.slug + '-') && f !== mod.slug + '.jar'), filename] : [filename]);
+      const resData = await res.json();
+      const actualFilename = resData.installed || filename;
+      const updatedMods = mods.map(m => m.id === mod.id ? { ...m, installedJarFile: actualFilename } : m);
+      await saveToServer(updatedMods, null);
+      setVmDiskFiles(p => p ? [...p.filter(f => !f.startsWith(mod.slug + '-') && f !== mod.slug + '.jar'), actualFilename] : [actualFilename]);
       addToast(`${mod.title}${mod.isCustom ? '' : ' ' + versionNumber} installed to VM`);
       setInstallStatus(p => ({ ...p, [mod.id]: 'done' }));
       setTimeout(() => setInstallStatus(p => { const n = { ...p }; delete n[mod.id]; return n; }), 3000);
@@ -2903,20 +2907,18 @@ function ModManager() {
       let updated = 0;
       const updatedMods = mods.map(mod => {
         if (mod.isCustom) return mod;
-        const diskFile = diskFiles.find(f => f.startsWith(mod.slug + '-') || f === mod.slug + '.jar');
+        const diskFile = mod.installedJarFile
+          ? diskFiles.find(f => f.replace(/\.disabled$/, '') === mod.installedJarFile)
+          : diskFiles.find(f => f.startsWith(mod.slug + '-') || f === mod.slug + '.jar');
         if (!diskFile) return mod;
-        // Extract version from filename: slug-VERSION.jar
-        const extracted = diskFile.startsWith(mod.slug + '-')
-          ? diskFile.slice(mod.slug.length + 1).replace(/\.jar$/i, '')
-          : null;
-        if (!extracted) return mod;
-        // Match against candidates with + treated as _ (fixes safeFilename corruption)
-        const matchingCandidate = mod.server_candidates?.find(
-          c => c.replace(/\+/g, '_') === extracted
+        const diskBase = diskFile.replace(/\.disabled$/, '').replace(/\.jar$/i, '');
+        const matchingCandidate = mod.server_candidates?.find(c =>
+          diskBase.endsWith(c.replace(/\+/g, '_')) || diskBase.endsWith(c)
         );
-        const canonical = matchingCandidate || extracted;
-        if (canonical === mod.installed_version) return mod;
+        const canonical = matchingCandidate || null;
+        if (!canonical || canonical === mod.installed_version) return mod;
         updated++;
+        return { ...mod, installed_version: canonical };
         // Keep existing candidates but prepend the actual installed version if missing
         const newCandidates = mod.server_candidates?.includes(extracted)
           ? mod.server_candidates
