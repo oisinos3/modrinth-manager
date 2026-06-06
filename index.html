@@ -202,6 +202,8 @@ body {
   border: 1px solid var(--glass-border);
   border-radius: var(--r-lg);
   box-shadow: var(--shadow-glass);
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
 }
 /* specular top highlight + inner sheen */
 .glass::before {
@@ -1927,7 +1929,6 @@ const DashboardView = ({ ctx }) => {
     if (filter === 'missing') list = list.filter(m => !m.isCustom && m.target_version_number === 'None Found');
     if (filter === 'not-installed') list = list.filter(m => vmDiskFiles !== null && !vmDiskFiles.some(f => f.startsWith(m.slug + '-') || f === m.slug + '.jar'));
     if (filter === 'server-only') list = list.filter(m => m.server_side === 'required' && m.client_side === 'unsupported');
-    if (filter === 'client-only') list = list.filter(m => m.client_side === 'required' && m.server_side === 'unsupported');
     if (filter === 'library') list = list.filter(m => isLibraryMod(m));
     if (filterQuery.trim()) {
       const q = filterQuery.toLowerCase();
