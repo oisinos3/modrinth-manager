@@ -2168,7 +2168,14 @@ const DashboardView = ({ ctx }) => {
             </button>
           )}
           {/* overflow */}
-          <div style={{ position: 'relative' }} ref={actionsRef}>
+          <div
+            ref={actionsRef}
+            style={{
+              position: 'relative',
+              isolation: 'isolate',
+              zIndex: 100
+            }}
+          >
             <IconBtn name="ellipsis" title="More" active={showActionsMenu} onClick={() => setShowActionsMenu(v => !v)} />
             {showActionsMenu && (
               <div className="fade-in" style={{ position: 'absolute', right: 0, top: 46, width: 240, padding: 7, zIndex: 50, borderRadius: 18, background: 'rgba(12,18,38,0.99)', border: '1px solid rgba(255,255,255,0.14)' }}>
