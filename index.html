@@ -2909,13 +2909,19 @@ function ModManager() {
         const extracted = diskFile.startsWith(mod.slug + '-')
           ? diskFile.slice(mod.slug.length + 1).replace(/\.jar$/i, '')
           : null;
-        if (!extracted || extracted === mod.installed_version) return mod;
+        if (!extracted) return mod;
+        // Match against candidates with + treated as _ (fixes safeFilename corruption)
+        const matchingCandidate = mod.server_candidates?.find(
+          c => c.replace(/\+/g, '_') === extracted
+        );
+        const canonical = matchingCandidate || extracted;
+        if (canonical === mod.installed_version) return mod;
         updated++;
         // Keep existing candidates but prepend the actual installed version if missing
         const newCandidates = mod.server_candidates?.includes(extracted)
           ? mod.server_candidates
           : [extracted, ...(mod.server_candidates || [])];
-        return { ...mod, installed_version: extracted, server_candidates: newCandidates };
+        return { ...mod, installed_version: canonical, server_candidates: newCandidates };
       });
 
       if (updated > 0) {
