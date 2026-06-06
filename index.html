@@ -2845,7 +2845,9 @@ function ModManager() {
       if (!res.ok) throw new Error(`VM responded ${res.status}`);
       const resData = await res.json();
       const actualFilename = resData.installed || filename;
-      const updatedMods = mods.map(m => m.id === mod.id ? { ...m, installedJarFile: actualFilename } : m);
+      const updatedMods = mods.map(m => m.id === mod.id
+        ? { ...m, installedJarFile: actualFilename, installed_version: mod.isCustom ? m.installed_version : versionNumber }
+        : m);
       await saveToServer(updatedMods, null);
       setVmDiskFiles(p => p ? [...p.filter(f => !f.startsWith(mod.slug + '-') && f !== mod.slug + '.jar'), actualFilename] : [actualFilename]);
       addToast(`${mod.title}${mod.isCustom ? '' : ' ' + versionNumber} installed to VM`);
@@ -2902,35 +2904,28 @@ function ModManager() {
       if (!res.ok) throw new Error(`VM responded ${res.status}`);
       const data = await res.json();
       const diskFiles = data.files || [];
-      setVmDiskFiles(diskFiles); // refresh disk state too
+      setVmDiskFiles(diskFiles);
 
       let updated = 0;
       const updatedMods = mods.map(mod => {
         if (mod.isCustom) return mod;
-        const diskFile = mod.installedJarFile
-          ? diskFiles.find(f => f.replace(/\.disabled$/, '') === mod.installedJarFile)
-          : diskFiles.find(f => f.startsWith(mod.slug + '-') || f === mod.slug + '.jar');
+
+        // Already have an exact filename recorded - verify it still exists, nothing else to do
+        if (mod.installedJarFile && diskFiles.find(f => f.replace(/\.disabled$/, '') === mod.installedJarFile)) return mod;
+
+        // Legacy: no installedJarFile set yet - find by slug and record it
+        const diskFile = diskFiles.find(f => f.startsWith(mod.slug + '-') || f === mod.slug + '.jar');
         if (!diskFile) return mod;
-        const diskBase = diskFile.replace(/\.disabled$/, '').replace(/\.jar$/i, '');
-        const matchingCandidate = mod.server_candidates?.find(c =>
-          diskBase.endsWith(c.replace(/\+/g, '_')) || diskBase.endsWith(c)
-        );
-        const canonical = matchingCandidate || null;
-        if (!canonical || canonical === mod.installed_version) return mod;
+
         updated++;
-        return { ...mod, installed_version: canonical };
-        // Keep existing candidates but prepend the actual installed version if missing
-        const newCandidates = mod.server_candidates?.includes(extracted)
-          ? mod.server_candidates
-          : [extracted, ...(mod.server_candidates || [])];
-        return { ...mod, installed_version: canonical, server_candidates: newCandidates };
+        return { ...mod, installedJarFile: diskFile.replace(/\.disabled$/, '') };
       });
 
       if (updated > 0) {
         await saveToServer(updatedMods, null);
-        addToast(`Synced ${updated} version${updated === 1 ? '' : 's'} from disk`);
+        addToast(`Recorded filenames for ${updated} mod${updated === 1 ? '' : 's'}`);
       } else {
-        addToast('All versions already match disk', 'info');
+        addToast('All mods already have filenames recorded', 'info');
       }
     } catch (err) { addToast(`Sync failed: ${err.message}`, 'error'); }
     finally { setLoading(false); }
