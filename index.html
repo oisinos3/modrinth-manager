@@ -1812,7 +1812,7 @@ const ChangelogCard = ({ mods, targetVersion, isAdmin, checkAllUpdates, checking
       </div>
 
       {updatable.length === 0 ? (
-        <>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         <p style={{ margin: 0, fontSize: 13, color: 'var(--text-ghost)', fontStyle: 'italic' }}>
           All changelogs up to date for {targetVersion}.{!isAdmin ? ' Ask an admin to run Refresh mod builds.' : ''}
         </p>
@@ -1823,7 +1823,7 @@ const ChangelogCard = ({ mods, targetVersion, isAdmin, checkAllUpdates, checking
             {checkingUpdates ? 'Checking…' : 'Refresh mod builds'}
           </button>
         )}
-        </>
+        </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, overflowY: 'auto', maxHeight: 130 }}>
           {updatable.map(mod => (
