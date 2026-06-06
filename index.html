@@ -1913,11 +1913,12 @@ const DashboardView = ({ ctx }) => {
 
   // ---- list compute ----
   const baseList = activeTab === 'active' ? mods : wishlist;
-  const libraryCount = activeTab === 'active' ? mods.filter(m => activeDependencyIds.has(m.id)).length : 0;
+  const isLibraryMod = (m) => activeDependencyIds.has(m.id) || (m.categories || []).includes('library');
+  const libraryCount = activeTab === 'active' ? mods.filter(isLibraryMod).length : 0;
 
   const visible = useMemo(() => {
     let list = [...baseList];
-    if (activeTab === 'active' && !showLibraries) list = list.filter(m => !activeDependencyIds.has(m.id));
+    if (activeTab === 'active' && !showLibraries) list = list.filter(m => !isLibraryMod(m));
     // Status filter
     if (filter === 'custom') list = list.filter(m => m.isCustom);
     if (filter === 'missing') list = list.filter(m => !m.isCustom && m.target_version_number === 'None Found');
@@ -2866,8 +2867,10 @@ function ModManager() {
   const handleRemoveFromVM = async (mod, selectedVersion) => {
     if (!vmApiUrl) return false;
     if (demo) { demoRemove(mod); return true; }
-    const onDiskFile = vmDiskFiles && vmDiskFiles.find(f => f.startsWith(mod.slug + '-') || f === mod.slug + '.jar');
-    const filename = onDiskFile || (mod.isCustom ? `${mod.slug}.jar` : `${mod.slug}-${selectedVersion || mod.installed_version}.jar`);
+    const onDiskFile = mod.installedJarFile
+      ? vmDiskFiles && vmDiskFiles.find(f => f.replace(/\.disabled$/, '') === mod.installedJarFile)
+      : vmDiskFiles && vmDiskFiles.find(f => f.startsWith(mod.slug + '-') || f === mod.slug + '.jar');
+    const filename = onDiskFile || mod.installedJarFile || (mod.isCustom ? `${mod.slug}.jar` : `${mod.slug}-${selectedVersion || mod.installed_version}.jar`);
     setInstallStatus(p => ({ ...p, [mod.id]: 'removing' }));
     try {
       const res = await fetch(`${vmBase()}/remove/${encodeURIComponent(filename)}`, { method: 'DELETE', headers: { 'x-api-key': VM_API_KEY } });
@@ -3000,10 +3003,12 @@ function ModManager() {
 
     // VM: rename jar ↔ jar.disabled if we have a file on disk
     if (vmApiUrl && !demo && vmDiskFiles) {
-      const diskFile = vmDiskFiles.find(f => {
-        const base = f.replace(/\.disabled$/, '');
-        return base.startsWith(mod.slug + '-') || base === mod.slug + '.jar';
-      });
+      const diskFile = mod.installedJarFile
+        ? vmDiskFiles.find(f => f.replace(/\.disabled$/, '') === mod.installedJarFile)
+        : vmDiskFiles.find(f => {
+            const base = f.replace(/\.disabled$/, '');
+            return base.startsWith(mod.slug + '-') || base === mod.slug + '.jar';
+          });
       if (diskFile) {
         try {
           const res = await fetch(`${vmBase()}/toggle`, {
