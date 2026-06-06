@@ -836,15 +836,19 @@ const ModCard = ({ mod, allMods, isCheckingUpdates, accessLevel, activeTab, onVe
   const modInstallState = installStatus[mod.id];
   const candidates = mod.server_candidates && mod.server_candidates.length > 0 ? [...new Set(mod.server_candidates)] : [];
 
-  const isOnDisk = vmDiskFiles !== null && vmDiskFiles.some(f => {
+  // Explicit check: the exact installedJarFile exists on disk as .disabled
+  const jarIsDisabledOnDisk = !!(vmDiskFiles !== null && mod.installedJarFile &&
+    vmDiskFiles.includes(mod.installedJarFile + '.disabled'));
+
+  const isOnDisk = vmDiskFiles !== null && (jarIsDisabledOnDisk || vmDiskFiles.some(f => {
     const base = f.replace(/\.disabled$/, '');
     return (mod.installedJarFile && base === mod.installedJarFile) ||
       base.startsWith(mod.slug + '-') || base === mod.slug + '.jar';
-  });
-  const isDisabledOnDisk = isOnDisk && vmDiskFiles.some(f => f.endsWith('.jar.disabled') && (
+  }));
+  const isDisabledOnDisk = jarIsDisabledOnDisk || (isOnDisk && vmDiskFiles.some(f => f.endsWith('.jar.disabled') && (
     (mod.installedJarFile && f.replace(/\.disabled$/, '') === mod.installedJarFile) ||
     f.replace(/\.disabled$/, '').startsWith(mod.slug + '-') || f.replace(/\.disabled$/, '') === mod.slug + '.jar'
-  ));
+  )));
   const canInstall = vmApiUrl && activeTab === 'active' && accessLevel === 'admin' &&
     (!mod.isCustom ? candidates.length > 0 : !!mod.customUrl);
 
@@ -2003,7 +2007,7 @@ const DashboardView = ({ ctx }) => {
   return (
     <div style={{ minHeight: '100vh', paddingBottom: 60 }}>
       {/* ===== Top nav ===== */}
-      <div style={{ position: 'sticky', top: 0, zIndex: 40, padding: '14px 28px',
+      <div style={{ position: 'sticky', top: 0, zIndex: 100, padding: '14px 28px',
         background: 'linear-gradient(180deg, rgba(5,7,13,0.82), rgba(5,7,13,0.04))' }}>
         <div style={{ maxWidth: 1440, margin: '0 auto', display: 'flex', alignItems: 'center', gap: 14 }}>
           {/* Left: brand + server name */}
@@ -2158,10 +2162,10 @@ const DashboardView = ({ ctx }) => {
             </button>
           )}
           {/* overflow */}
-          <div style={{ position: 'relative', isolation: 'isolate' }} ref={actionsRef}>
+          <div style={{ position: 'relative' }} ref={actionsRef}>
             <IconBtn name="ellipsis" title="More" active={showActionsMenu} onClick={() => setShowActionsMenu(v => !v)} />
             {showActionsMenu && (
-              <div className="fade-in" style={{ position: 'absolute', right: 0, top: 46, width: 240, padding: 7, zIndex: 500, borderRadius: 18, background: 'rgba(12,18,38,0.99)', border: '1px solid var(--glass-border)', boxShadow: '0 8px 30px rgba(0,0,0,0.7)', transform: 'translateZ(0)' }}>
+              <div className="fade-in" style={{ position: 'absolute', right: 0, top: 46, width: 240, padding: 7, zIndex: 50, borderRadius: 18, background: 'rgba(12,18,38,0.99)', border: '1px solid var(--glass-border)', boxShadow: '0 4px 16px rgba(0,0,0,0.6)', transform: 'translateZ(0)' }}>
                 {[
                   // Group 1: add / script
                   [
