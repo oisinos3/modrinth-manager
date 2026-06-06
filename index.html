@@ -510,7 +510,7 @@ textarea.field { resize: none; line-height: 1.5; }
   <style>
     .mod-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 20px; align-items: stretch; }
     .hairline-l { border-left: 1px solid var(--glass-border); }
-    @media (max-width: 1200px) {
+    @media (max-width: 960px) {
       .hero-grid { grid-template-columns: 1fr 1fr !important; }
     }
     @media (max-width: 860px) {
@@ -898,13 +898,13 @@ const ModCard = ({ mod, allMods, isCheckingUpdates, accessLevel, activeTab, onVe
         </div>
         <div style={{ display: 'flex', gap: 2, flexShrink: 0, marginTop: -2 }}>
           <a href={mod.project_url || '#'} target="_blank" rel="noreferrer"
-            className="btn btn-icon btn-ghost" style={{ padding: 7 }} title="Open on Modrinth">
-            <Icon name="arrow-up-right-from-square" style={{ fontSize: 11 }} />
+            className="btn btn-icon btn-ghost" style={{ padding: 8 }} title="Open on Modrinth">
+            <Icon name="arrow-up-right-from-square" style={{ fontSize: 14 }} />
           </a>
           {activeTab === 'active' && accessLevel === 'admin' && onToggle && (
             <button onClick={() => onToggle(mod.id)} title={isEnabled ? 'Disable mod' : 'Enable mod'}
-              className="btn btn-icon btn-ghost" style={{ padding: 7, color: isEnabled ? 'var(--text-faint)' : 'var(--warn)' }}>
-              <Icon name={isEnabled ? 'toggle-on' : 'toggle-off'} style={{ fontSize: 16 }} />
+              className="btn btn-icon btn-ghost" style={{ padding: 8, color: isEnabled ? 'var(--text-faint)' : 'var(--warn)' }}>
+              <Icon name={isEnabled ? 'toggle-on' : 'toggle-off'} style={{ fontSize: 18 }} />
             </button>
           )}
           {activeTab === 'wishlist' && accessLevel === 'admin' && (
@@ -915,10 +915,10 @@ const ModCard = ({ mod, allMods, isCheckingUpdates, accessLevel, activeTab, onVe
           )}
           {(accessLevel === 'admin' || activeTab === 'wishlist') && (
             <button onClick={() => onRemove(mod, isOnDisk)} title="Remove"
-              className="btn btn-icon btn-ghost" style={{ padding: 7 }}
+              className="btn btn-icon btn-ghost" style={{ padding: 8 }}
               onMouseEnter={e => e.currentTarget.style.color = 'var(--bad)'}
               onMouseLeave={e => e.currentTarget.style.color = ''}>
-              <Icon name="trash-can" style={{ fontSize: 12 }} />
+              <Icon name="trash-can" style={{ fontSize: 15 }} />
             </button>
           )}
         </div>
@@ -1812,6 +1812,7 @@ const ChangelogCard = ({ mods, targetVersion, isAdmin, checkAllUpdates, checking
       </div>
 
       {updatable.length === 0 ? (
+        <>
         <p style={{ margin: 0, fontSize: 13, color: 'var(--text-ghost)', fontStyle: 'italic' }}>
           All changelogs up to date for {targetVersion}.{!isAdmin ? ' Ask an admin to run Refresh mod builds.' : ''}
         </p>
@@ -1822,8 +1823,9 @@ const ChangelogCard = ({ mods, targetVersion, isAdmin, checkAllUpdates, checking
             {checkingUpdates ? 'Checking…' : 'Refresh mod builds'}
           </button>
         )}
+        </>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, overflowY: 'auto', maxHeight: 180 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, overflowY: 'auto', maxHeight: 130 }}>
           {updatable.map(mod => (
             <div key={mod.id}
               onClick={() => setExpanded(expanded === mod.id ? null : mod.id)}
@@ -2051,7 +2053,7 @@ const DashboardView = ({ ctx }) => {
       <div style={{ maxWidth: 1440, margin: '0 auto', padding: '8px 28px 0', display: 'flex', flexDirection: 'column', gap: 22 }}>
 
         {/* ===== Hero - bento layout ===== */}
-        <div className="fade-in hero-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 200px', gap: 16, alignItems: 'stretch' }}>
+        <div className="fade-in hero-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 200px', gap: 16, alignItems: 'stretch' }}>
 
           {/* Panel 1: stats + IP + codes */}
           <Glass style={{ padding: 22, borderRadius: 'var(--r-xl)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 16 }}>
@@ -2088,13 +2090,13 @@ const DashboardView = ({ ctx }) => {
             ) : null}
           </Glass>
 
-          {/* Panel 2: Admin Notes */}
-          <AdminNoteCard heroNote={heroNote} isAdmin={isAdmin} onSave={handleSaveHeroNote} />
+          {/* Panel 2: Notes + Changelog stacked */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <AdminNoteCard heroNote={heroNote} isAdmin={isAdmin} onSave={handleSaveHeroNote} />
+            <ChangelogCard mods={mods} targetVersion={targetVersion} isAdmin={isAdmin} checkAllUpdates={() => checkAllUpdates(mods, 'active')} checkingUpdates={checkingUpdates} />
+          </div>
 
-          {/* Panel 3: Changelog / What's New */}
-          <ChangelogCard mods={mods} targetVersion={targetVersion} isAdmin={isAdmin} checkAllUpdates={() => checkAllUpdates(mods, 'active')} checkingUpdates={checkingUpdates} />
-
-          {/* Panel 4: Server status */}
+          {/* Panel 3: Server status */}
           <Glass style={{ padding: 22, borderRadius: 'var(--r-xl)', display: 'flex', flexDirection: 'column', gap: 14, justifyContent: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
               <span className={`status-dot ${serverStatus?.online ? 'status-on' : 'status-off'}`} style={{ width: 11, height: 11 }} />
@@ -3127,18 +3129,4 @@ function ModManager() {
     installConfirmTarget, setInstallConfirmTarget,
     addModConfirmTarget, setAddModConfirmTarget,
     sortBy, setSortBy, filter, setFilter, toasts, addToast,
-    newServerName, setNewServerName, newServerIP, setNewServerIP, fileInputRef, importStatus,
-    heroNote, handleSaveHeroNote,
-    attemptJoin, handleCreateServer, enterDemo, handleLogout, saveVersions, handleAddCustomMod, handleAddMod,
-    handleRemoveMod, handleRemoveConfirmed, handleApproveWishlist, handleVote, handleInstallMod, handleRemoveFromVM, handleVmSync, handleSyncVersionsFromDisk, handleSyncTagsFromModrinth,
-    handleUpdateNote, handleToggleMod, handleVersionChange, handleSaveSettings, handleExportBackup, triggerImport, handleImportBackup, checkAllUpdates,
-    activeDependencyIds, activeEditingMod, isSyncMismatch,
-    dependencyOf
-  };
-
-  return renderApp(ctx);
-}
-
-
-ReactDOM.createRoot(document.getElementById('root')).render(<ModManager />);
-</script>
+    newServerName, setNewServ
