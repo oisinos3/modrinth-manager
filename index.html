@@ -510,6 +510,9 @@ textarea.field { resize: none; line-height: 1.5; }
   <style>
     .mod-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 20px; align-items: stretch; }
     .hairline-l { border-left: 1px solid var(--glass-border); }
+    @media (max-width: 1200px) {
+      .hero-grid { grid-template-columns: 1fr 1fr !important; }
+    }
     @media (max-width: 860px) {
       .hero-grid { grid-template-columns: 1fr !important; }
       .hairline-l { border-left: 0 !important; padding-left: 0 !important; border-top: 1px solid var(--glass-border); padding-top: 16px; }
@@ -824,7 +827,7 @@ const DependencySection = ({ mod, allMods, onAdd, onEdit }) => {
 // ---------- Mod card ----------
 const ModCard = ({ mod, allMods, isCheckingUpdates, accessLevel, activeTab, onVersionChange,
   onApprove, onRemove, onAddDependency, onEditDependency, isModal = false, onUpdateNote,
-  currentUser, onVote, onInstall, onInstallOpen, onRemoveFromVM, installStatus = {},
+  currentUser, onVote, onInstall, onInstallOpen, onRemoveFromVM, onToggle, installStatus = {},
   vmApiUrl, vmDiskFiles = null, upgradeExpanded = false, dependencyOf = {} }) => {
 
   const isLocked = mod.note && mod.noteAuthorId && mod.noteAuthorId !== currentUser?.uid && accessLevel !== 'admin';
@@ -833,10 +836,14 @@ const ModCard = ({ mod, allMods, isCheckingUpdates, accessLevel, activeTab, onVe
   const modInstallState = installStatus[mod.id];
   const candidates = mod.server_candidates && mod.server_candidates.length > 0 ? [...new Set(mod.server_candidates)] : [];
 
-  const isOnDisk = vmDiskFiles !== null && vmDiskFiles.some(f =>
-    (mod.installedJarFile && f === mod.installedJarFile) ||  // exact match (stored in Firebase)
-    f.startsWith(mod.slug + '-') || f === mod.slug + '.jar'  // slug-pattern fallback
-  );
+  const isOnDisk = vmDiskFiles !== null && vmDiskFiles.some(f => {
+    const base = f.replace(/\.disabled$/, '');
+    return (mod.installedJarFile && base === mod.installedJarFile) ||
+      base.startsWith(mod.slug + '-') || base === mod.slug + '.jar';
+  });
+  const isDisabledOnDisk = isOnDisk && vmDiskFiles.some(f => f.endsWith('.jar.disabled') && (
+    f.replace(/\.disabled$/, '').startsWith(mod.slug + '-') || f.replace(/\.disabled$/, '') === mod.slug + '.jar'
+  ));
   const canInstall = vmApiUrl && activeTab === 'active' && accessLevel === 'admin' &&
     (!mod.isCustom ? candidates.length > 0 : !!mod.customUrl);
 
@@ -879,7 +886,9 @@ const ModCard = ({ mod, allMods, isCheckingUpdates, accessLevel, activeTab, onVe
             {sideLabel && <Badge color={sideLabel.color}>{sideLabel.label}</Badge>}
             {activeTab === 'active' && vmDiskFiles !== null && (
               isOnDisk
-                ? <Badge color="green" icon="circle-check">On server</Badge>
+                ? isDisabledOnDisk
+                  ? <Badge color="yellow" icon="pause">Disabled on server</Badge>
+                  : <Badge color="green" icon="circle-check">On server</Badge>
                 : <Badge color="slate" icon="hard-drive">Not installed</Badge>
             )}
             {mod.categories && mod.categories.slice(0, 2).map(cat => (
@@ -892,6 +901,12 @@ const ModCard = ({ mod, allMods, isCheckingUpdates, accessLevel, activeTab, onVe
             className="btn btn-icon btn-ghost" style={{ padding: 7 }} title="Open on Modrinth">
             <Icon name="arrow-up-right-from-square" style={{ fontSize: 11 }} />
           </a>
+          {activeTab === 'active' && accessLevel === 'admin' && onToggle && (
+            <button onClick={() => onToggle(mod.id)} title={isEnabled ? 'Disable mod' : 'Enable mod'}
+              className="btn btn-icon btn-ghost" style={{ padding: 7, color: isEnabled ? 'var(--text-faint)' : 'var(--warn)' }}>
+              <Icon name={isEnabled ? 'toggle-on' : 'toggle-off'} style={{ fontSize: 16 }} />
+            </button>
+          )}
           {activeTab === 'wishlist' && accessLevel === 'admin' && (
             <button onClick={() => onApprove(mod)} title="Promote to Server Mods"
               className="btn btn-icon btn-ghost" style={{ padding: 7, color: 'var(--warn)' }}>
@@ -1720,6 +1735,122 @@ const MigrationModal = ({ isOpen, onClose, mods, serverVersion, targetVersion, s
 //  dashboard.jsx - DashboardView + renderApp dispatcher
 // ============================================================
 
+// ---------- Admin Notes bento card ----------
+const AdminNoteCard = ({ heroNote, isAdmin, onSave }) => {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(heroNote || '');
+  useEffect(() => { setDraft(heroNote || ''); }, [heroNote]);
+
+  const commit = () => { onSave(draft); setEditing(false); };
+
+  return (
+    <Glass style={{ padding: 22, borderRadius: 'var(--r-xl)', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 400, color: 'var(--text-dim)', letterSpacing: '-0.01em' }}>
+          Server Notes
+        </div>
+        {isAdmin && (
+          <button onClick={() => editing ? commit() : setEditing(true)}
+            title={editing ? 'Save note' : 'Edit note'}
+            style={{ background: 'transparent', border: 0, cursor: 'pointer', padding: '4px 6px', borderRadius: 8, color: editing ? 'var(--good)' : 'var(--text-faint)', transition: 'color .15s' }}
+            onMouseEnter={e => e.currentTarget.style.color = editing ? 'var(--good)' : 'var(--text)'}
+            onMouseLeave={e => e.currentTarget.style.color = editing ? 'var(--good)' : 'var(--text-faint)'}>
+            <Icon name={editing ? 'circle-check' : 'pen'} style={{ fontSize: 13 }} />
+          </button>
+        )}
+      </div>
+      {editing ? (
+        <textarea value={draft} onChange={e => setDraft(e.target.value)}
+          onBlur={commit}
+          onKeyDown={e => { if (e.key === 'Escape') { setDraft(heroNote || ''); setEditing(false); } }}
+          placeholder="Pin a note for the crew…"
+          style={{
+            flex: 1, background: 'rgba(0,0,0,0.2)', border: '1px solid var(--glass-border)', borderRadius: 10,
+            color: 'var(--text)', fontFamily: 'var(--font)', fontSize: 13.5, lineHeight: 1.55,
+            resize: 'none', outline: 'none', padding: '10px 12px', minHeight: 80,
+          }}
+          autoFocus
+        />
+      ) : (
+        <p style={{
+          margin: 0, flex: 1, fontSize: 13.5, lineHeight: 1.6,
+          color: heroNote ? 'var(--text-dim)' : 'var(--text-ghost)',
+          fontStyle: heroNote ? 'normal' : 'italic',
+        }}>
+          {heroNote || (isAdmin ? 'Click ✎ to pin a note for the crew.' : 'No server notes yet.')}
+        </p>
+      )}
+    </Glass>
+  );
+};
+
+// ---------- Changelog / What's New bento card ----------
+const ChangelogCard = ({ mods, targetVersion }) => {
+  const [expanded, setExpanded] = useState(null);
+
+  const updatable = useMemo(() => mods.filter(m =>
+    !m.isCustom &&
+    m.target_version_number && m.target_version_number !== 'None Found' &&
+    m.target_version_number !== m.installed_version &&
+    m.target_changelog
+  ), [mods]);
+
+  const firstLine = (text) => (text || '').split('\n').find(l => l.trim()) || '';
+  const cleanLine = (text) => text.replace(/^#+\s*/, '').replace(/\*\*/g, '').replace(/`/g, '').trim();
+
+  return (
+    <Glass style={{ padding: 22, borderRadius: 'var(--r-xl)', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 400, color: 'var(--text-dim)', letterSpacing: '-0.01em', flex: 1 }}>
+          What's New
+        </div>
+        {updatable.length > 0 && (
+          <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 9px', borderRadius: 99, background: 'color-mix(in oklab, var(--acc-1) 18%, transparent)', color: 'var(--acc-1)', border: '1px solid color-mix(in oklab, var(--acc-1) 35%, transparent)' }}>
+            {updatable.length} update{updatable.length !== 1 ? 's' : ''} → {targetVersion}
+          </span>
+        )}
+      </div>
+
+      {updatable.length === 0 ? (
+        <p style={{ margin: 0, fontSize: 13, color: 'var(--text-ghost)', fontStyle: 'italic' }}>
+          All changelogs up to date for {targetVersion}. Run “Refresh mod builds” to populate.
+        </p>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, overflowY: 'auto', maxHeight: 180 }}>
+          {updatable.map(mod => (
+            <div key={mod.id}
+              onClick={() => setExpanded(expanded === mod.id ? null : mod.id)}
+              style={{ cursor: 'pointer', padding: '9px 11px', borderRadius: 11, background: 'rgba(255,255,255,0.04)', border: '1px solid var(--glass-border)', transition: 'background .15s' }}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.07)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {mod.icon_url
+                  ? <img src={mod.icon_url} alt="" style={{ width: 20, height: 20, borderRadius: 5, flexShrink: 0 }} />
+                  : <Icon name="cube" style={{ fontSize: 12, color: 'var(--text-faint)', flexShrink: 0 }} />}
+                <span style={{ flex: 1, fontSize: 13, fontWeight: 620, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{mod.title}</span>
+                <span style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--acc-1)', flexShrink: 0 }}>{mod.target_version_number}</span>
+                <Icon name={expanded === mod.id ? 'chevron-up' : 'chevron-down'} style={{ fontSize: 10, color: 'var(--text-faint)', flexShrink: 0 }} />
+              </div>
+              {expanded !== mod.id && (
+                <p style={{ margin: '5px 0 0 28px', fontSize: 12, color: 'var(--text-faint)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {cleanLine(firstLine(mod.target_changelog))}
+                </p>
+              )}
+              {expanded === mod.id && (
+                <pre style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--text-faint)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: 1.55, fontFamily: 'var(--font)', maxHeight: 140, overflowY: 'auto', padding: '8px 10px', background: 'rgba(0,0,0,0.2)', borderRadius: 8 }}>
+                  {mod.target_changelog.length > 800 ? mod.target_changelog.slice(0, 800) + '\n…' : mod.target_changelog}
+                </pre>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </Glass>
+  );
+};
+
+
+
 // ---- Stat pill used in hero ----
 const HeroStat = ({ icon, label, value, tone }) => (
   <div style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
@@ -1746,6 +1877,7 @@ const DashboardView = ({ ctx }) => {
     fabricLoaderVersion, fabricApiVersion,
     removeConfirmTarget, setRemoveConfirmTarget, installConfirmTarget, setInstallConfirmTarget, addModConfirmTarget, setAddModConfirmTarget, sortBy, setSortBy, filter, setFilter,
     toasts, addToast, fileInputRef, user, isSyncing,
+    heroNote, handleSaveHeroNote,
     saveVersions, handleAddCustomMod, handleAddMod, handleRemoveMod, handleRemoveConfirmed, handleApproveWishlist,
     handleVote, handleInstallMod, handleRemoveFromVM, handleVmSync, handleSyncVersionsFromDisk, handleSyncTagsFromModrinth, handleUpdateNote, handleVersionChange,
     handleSaveSettings, handleExportBackup, triggerImport, handleImportBackup, checkAllUpdates, handleLogout,
@@ -1829,6 +1961,7 @@ const DashboardView = ({ ctx }) => {
           server_candidates: svCands.map(v => v.version_number),
           target_version_number: latestTv ? latestTv.version_number : 'None Found',
           primary_file_url: pFile ? pFile.url : null,
+          target_changelog: latestTv ? (latestTv.changelog || null) : null,
           dependencies: latestSv ? latestSv.dependencies : [],
           project_url: `https://modrinth.com/mod/${info.slug}`,
           status: latestTv ? 'ready' : 'missing',
@@ -1847,7 +1980,7 @@ const DashboardView = ({ ctx }) => {
     onAddDependency: (e, slug) => handleAddMod(e, slug), onEditDependency: setEditingDependencyId,
     onUpdateNote: handleUpdateNote, onVote: handleVote, onInstall: handleInstallMod,
     onInstallOpen: (mod, candidates, initialVersion) => setInstallConfirmTarget({ mod, candidates, initialVersion }),
-    onRemoveFromVM: handleRemoveFromVM, installStatus, vmApiUrl, vmDiskFiles, upgradeExpanded: showUpgradePanel,
+    onRemoveFromVM: handleRemoveFromVM, onToggle: handleToggleMod, installStatus, vmApiUrl, vmDiskFiles, upgradeExpanded: showUpgradePanel,
     dependencyOf,
   };
 
@@ -1911,48 +2044,51 @@ const DashboardView = ({ ctx }) => {
       <div style={{ maxWidth: 1440, margin: '0 auto', padding: '8px 28px 0', display: 'flex', flexDirection: 'column', gap: 22 }}>
 
         {/* ===== Hero - bento layout ===== */}
-        <div className="fade-in" style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 16, alignItems: 'stretch' }}>
+        <div className="fade-in hero-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 200px', gap: 16, alignItems: 'stretch' }}>
 
-          {/* Left panel: stats + IP + admin codes */}
-          <Glass style={{ padding: 24, borderRadius: 'var(--r-xl)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap' }}>
-              <HeroStat icon="cube" label="Server mods" value={`${mods.length} - ${enabledCount} active`} tone="var(--acc-1)" />
-              <HeroStat icon="heart" label="Wishlist" value={`${wishlist.length} requested`} tone="var(--violet)" />
-              {vmDiskFiles !== null && <HeroStat icon="hard-drive" label="On server" value={`${mods.filter(m => vmDiskFiles.some(f => f.startsWith(m.slug + '-') || f === m.slug + '.jar')).length}/${mods.length}`} tone="var(--info)" />}
+          {/* Panel 1: stats + IP + codes */}
+          <Glass style={{ padding: 22, borderRadius: 'var(--r-xl)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 18, flexWrap: 'wrap' }}>
+              <HeroStat icon="cube" label="Server mods" value={`${enabledCount} / ${mods.length}`} tone="var(--acc-1)" />
+              <HeroStat icon="heart" label="Wishlist" value={wishlist.length} tone="var(--violet)" />
               <div style={{ flex: 1 }} />
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                 {serverIP ? <CopyChip value={serverIP} label="IP" icon="copy" /> : null}
                 {isAdmin && panelUrl && <a href={panelUrl} target="_blank" rel="noreferrer" className="btn btn-glass btn-sm"><Icon name="gauge-high" style={{ fontSize: 12 }} /> Console</a>}
               </div>
             </div>
 
-            {/* Admin: show both codes + invite */}
-            {isAdmin && (
-              <div style={{ marginTop: 18, paddingTop: 16, borderTop: '1px solid var(--glass-border)', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--text-faint)', marginRight: 4 }}>
-                  <Icon name="key" style={{ fontSize: 10, marginRight: 6 }} />Access
+            {/* Access codes */}
+            {isAdmin ? (
+              <div style={{ paddingTop: 14, borderTop: '1px solid var(--glass-border)', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--text-faint)', marginRight: 2 }}>
+                  <Icon name="key" style={{ fontSize: 9, marginRight: 5 }} />Access
                 </span>
                 <CopyChip value={sessionCodes.admin} label="Admin" mono />
                 <CopyChip value={sessionCodes.user} label="Member" mono />
                 <button onClick={() => { const url = `${window.location.origin}${window.location.pathname}?code=${sessionCodes.user}`; if (copyToClipboard(url)) addToast('Invite link copied'); }}
-                  className="btn btn-glass btn-sm"><Icon name="link" style={{ fontSize: 11 }} /> Copy invite link</button>
+                  className="btn btn-glass btn-sm"><Icon name="link" style={{ fontSize: 11 }} /> Copy invite</button>
               </div>
-            )}
-            {/* Member: show their own code + invite link */}
-            {!isAdmin && sessionCodes.user && (
-              <div style={{ marginTop: 18, paddingTop: 16, borderTop: '1px solid var(--glass-border)', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--text-faint)', marginRight: 4 }}>
-                  <Icon name="link" style={{ fontSize: 10, marginRight: 6 }} />Invite
+            ) : sessionCodes.user ? (
+              <div style={{ paddingTop: 14, borderTop: '1px solid var(--glass-border)', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--text-faint)', marginRight: 2 }}>
+                  <Icon name="link" style={{ fontSize: 9, marginRight: 5 }} />Invite
                 </span>
                 <CopyChip value={sessionCodes.user} label="Code" mono />
                 <button onClick={() => { const url = `${window.location.origin}${window.location.pathname}?code=${sessionCodes.user}`; if (copyToClipboard(url)) addToast('Invite link copied'); }}
-                  className="btn btn-glass btn-sm"><Icon name="link" style={{ fontSize: 11 }} /> Copy invite link</button>
+                  className="btn btn-glass btn-sm"><Icon name="link" style={{ fontSize: 11 }} /> Copy invite</button>
               </div>
-            )}
+            ) : null}
           </Glass>
 
-          {/* Right panel: server status */}
-          <Glass style={{ padding: 22, borderRadius: 'var(--r-xl)', display: 'flex', flexDirection: 'column', gap: 14, minWidth: 200, justifyContent: 'center' }}>
+          {/* Panel 2: Admin Notes */}
+          <AdminNoteCard heroNote={heroNote} isAdmin={isAdmin} onSave={handleSaveHeroNote} />
+
+          {/* Panel 3: Changelog / What's New */}
+          <ChangelogCard mods={mods} targetVersion={targetVersion} />
+
+          {/* Panel 4: Server status */}
+          <Glass style={{ padding: 22, borderRadius: 'var(--r-xl)', display: 'flex', flexDirection: 'column', gap: 14, justifyContent: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
               <span className={`status-dot ${serverStatus?.online ? 'status-on' : 'status-off'}`} style={{ width: 11, height: 11 }} />
               <span style={{ fontSize: 16, fontWeight: 680, color: serverStatus?.online ? 'var(--good)' : 'var(--text-faint)', letterSpacing: '-0.01em' }}>
@@ -1963,7 +2099,7 @@ const DashboardView = ({ ctx }) => {
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Icon name="users" style={{ fontSize: 13, color: 'var(--text-faint)' }} />
                 <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-dim)' }}>{serverStatus.players.online}</span>
-                <span style={{ fontSize: 13, color: 'var(--text-ghost)' }}>/ {serverStatus.players.max} players</span>
+                <span style={{ fontSize: 13, color: 'var(--text-ghost)' }}>/ {serverStatus.players.max}</span>
               </div>
             )}
             <div style={{ borderTop: '1px solid var(--glass-border)', paddingTop: 12 }}>
@@ -2342,6 +2478,7 @@ function ModManager() {
   const [newServerIP, setNewServerIP] = useState('');
   const fileInputRef = useRef(null);
   const [importStatus, setImportStatus] = useState(null);
+  const [heroNote, setHeroNote] = useState('');
 
   const docRef = () => db.collection('artifacts').doc(storageAppId).collection('public').doc('data').collection('servers').doc(serverDocId);
 
@@ -2412,6 +2549,7 @@ function ModManager() {
         setServerVersion(d.serverVersion || '26.1'); setTargetVersion(d.targetVersion || '26.1.1');
         setServerName(d.serverName || 'My Server'); setServerIP(d.serverIP || '');
         setPanelUrl(d.panelUrl || ''); setVmApiUrl(d.vmApiUrl || '');
+        setHeroNote(d.heroNote || '');
         setSyncedVersion(d.syncedVersion || d.serverVersion || '26.1');
         if (d.fabricLoaderVersion !== undefined) setFabricLoaderVersion(d.fabricLoaderVersion || '');
         if (d.fabricApiVersion !== undefined) setFabricApiVersion(d.fabricApiVersion || '');
@@ -2568,6 +2706,7 @@ function ModManager() {
             server_candidates: svCands.map(v => v.version_number),
             target_version_number: latestTv ? latestTv.version_number : 'None Found',
             primary_file_url: pFile ? pFile.url : null,
+            target_changelog: latestTv ? (latestTv.changelog || null) : null,
             dependencies: latestSv ? latestSv.dependencies : [],
             project_url: `https://modrinth.com/mod/${info.slug}`,
             status: latestTv ? 'ready' : 'missing',
@@ -2599,6 +2738,7 @@ function ModManager() {
         target_version_number: latestTarget ? latestTarget.version_number : 'None Found',
         target_file_url: latestTarget ? `https://modrinth.com/mod/${info.slug}/version/${latestTarget.version_number}` : null,
         primary_file_url: latestTarget ? latestTarget.primary_file_url : null,
+        target_changelog: latestTarget ? (latestTarget.changelog || null) : null,
         dependencies: latestServer ? latestServer.dependencies : [],
         project_url: `https://modrinth.com/mod/${info.slug}`, updated_at: new Date().toISOString(),
         status: latestTarget ? 'ready' : 'missing', note: '', upvotes: [], downvotes: [], enabled: true,
@@ -2830,11 +2970,43 @@ function ModManager() {
     await saveToServer(null, updated);
   };
 
+  const handleSaveHeroNote = async (note) => {
+    setHeroNote(note);
+    if (demo || !serverDocId || accessLevel !== 'admin') return;
+    try { await docRef().update({ heroNote: note }); } catch (e) { /* silent */ }
+  };
+
   const handleToggleMod = async (modId) => {
     if (accessLevel !== 'admin') return;
-    const list = activeTab === 'active' ? mods : wishlist;
-    const updated = list.map(m => m.id === modId ? { ...m, enabled: !(m.enabled !== false) } : m);
-    if (activeTab === 'active') await saveToServer(updated, null); else await saveToServer(null, updated);
+    const mod = mods.find(m => m.id === modId);
+    if (!mod) return;
+    const newEnabled = !(mod.enabled !== false);
+    const updated = mods.map(m => m.id === modId ? { ...m, enabled: newEnabled } : m);
+    await saveToServer(updated, null);
+
+    // VM: rename jar ↔ jar.disabled if we have a file on disk
+    if (vmApiUrl && !demo && vmDiskFiles) {
+      const diskFile = vmDiskFiles.find(f => {
+        const base = f.replace(/\.disabled$/, '');
+        return base.startsWith(mod.slug + '-') || base === mod.slug + '.jar';
+      });
+      if (diskFile) {
+        try {
+          const res = await fetch(`${vmBase()}/toggle`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-api-key': VM_API_KEY },
+            body: JSON.stringify({ filename: diskFile, enable: newEnabled })
+          });
+          if (res.ok) {
+            const newFilename = newEnabled
+              ? diskFile.replace(/\.disabled$/, '')
+              : diskFile + '.disabled';
+            setVmDiskFiles(p => p ? [...p.filter(f => f !== diskFile), newFilename] : null);
+          }
+        } catch (e) { /* Firebase updated; VM rename failed silently */ }
+      }
+    }
+    addToast(`${mod.title} ${newEnabled ? 'enabled' : 'disabled'}`);
   };
 
   const handleVersionChange = async (modId, newVersion) => {
@@ -2905,6 +3077,7 @@ function ModManager() {
             target_version_number: lt ? lt.version_number : 'None Found',
             target_file_url: lt ? `https://modrinth.com/mod/${mod.slug}/version/${lt.version_number}` : null,
             primary_file_url: lt ? lt.primary_file_url : null,
+            target_changelog: lt ? (lt.changelog || null) : null,
             dependencies: vObj ? vObj.dependencies : (mod.dependencies || []),
             status: lt ? 'ready' : 'missing', enabled: mod.enabled !== undefined ? mod.enabled : true };
         } catch (e) { return mod; }
@@ -2948,6 +3121,7 @@ function ModManager() {
     addModConfirmTarget, setAddModConfirmTarget,
     sortBy, setSortBy, filter, setFilter, toasts, addToast,
     newServerName, setNewServerName, newServerIP, setNewServerIP, fileInputRef, importStatus,
+    heroNote, handleSaveHeroNote,
     attemptJoin, handleCreateServer, enterDemo, handleLogout, saveVersions, handleAddCustomMod, handleAddMod,
     handleRemoveMod, handleRemoveConfirmed, handleApproveWishlist, handleVote, handleInstallMod, handleRemoveFromVM, handleVmSync, handleSyncVersionsFromDisk, handleSyncTagsFromModrinth,
     handleUpdateNote, handleToggleMod, handleVersionChange, handleSaveSettings, handleExportBackup, triggerImport, handleImportBackup, checkAllUpdates,
