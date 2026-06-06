@@ -890,7 +890,7 @@ const ModCard = ({ mod, allMods, isCheckingUpdates, accessLevel, activeTab, onVe
             {activeTab === 'active' && vmDiskFiles !== null && (
               isOnDisk
                 ? isDisabledOnDisk
-                  ? <span className="badge" style={{ background: 'rgba(255,207,74,0.25)', color: '#ffe14a', borderColor: 'rgba(255,207,74,0.8)', boxShadow: '0 0 12px rgba(255,207,74,0.45)', fontWeight: 700 }}><Icon name="pause" style={{ fontSize: 9 }} /> Disabled on server</span>
+                  ? <span className="badge" style={{ background: 'rgba(255,207,74,0.25)', color: '#ffe14a', borderColor: 'rgba(255,207,74,0.8)', boxShadow: '0 0 12px rgba(255,207,74,0.45)', fontWeight: 700, position: 'relative', zIndex: 2 }}><Icon name="pause" style={{ fontSize: 9 }} /> Disabled on server</span>
                   : <Badge color="green" icon="circle-check">On server</Badge>
                 : <Badge color="slate" icon="hard-drive">Not installed</Badge>
             )}
