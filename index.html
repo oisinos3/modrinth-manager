@@ -2845,7 +2845,9 @@ function ModManager() {
       if (!res.ok) throw new Error(`VM responded ${res.status}`);
       const resData = await res.json();
       const actualFilename = resData.installed || filename;
-      const updatedMods = mods.map(m => m.id === mod.id
+      const freshDoc = await docRef().get();
+      const freshMods = freshDoc.data()?.mods || mods;
+      const updatedMods = freshMods.map(m => m.id === mod.id
         ? { ...m, installedJarFile: actualFilename, installed_version: mod.isCustom ? m.installed_version : versionNumber }
         : m);
       await saveToServer(updatedMods, null);
