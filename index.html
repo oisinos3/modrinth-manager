@@ -1918,7 +1918,7 @@ const DashboardView = ({ ctx }) => {
 
   const visible = useMemo(() => {
     let list = [...baseList];
-    if (activeTab === 'active' && !showLibraries) list = list.filter(m => !isLibraryMod(m));
+    if (activeTab === 'active' && !showLibraries && !filterQuery.trim()) list = list.filter(m => !isLibraryMod(m));
     // Status filter
     if (filter === 'custom') list = list.filter(m => m.isCustom);
     if (filter === 'missing') list = list.filter(m => !m.isCustom && m.target_version_number === 'None Found');
@@ -2172,6 +2172,7 @@ const DashboardView = ({ ctx }) => {
                   [
                     isAdmin && vmApiUrl && { icon: 'hard-drive', label: 'VM sync', on: handleVmSync },
                     isAdmin && vmApiUrl && { icon: 'rotate', label: 'Sync versions from disk', on: handleSyncVersionsFromDisk },
+                    isAdmin && vmApiUrl && { icon: 'wrench', label: 'Fix jar filenames', on: handleBatchReinstall },
                     isAdmin && { icon: 'tags', label: 'Sync tags from Modrinth', on: handleSyncTagsFromModrinth },
                   ].filter(Boolean),
                   // Group 3: view toggles
@@ -2301,6 +2302,20 @@ const DashboardView = ({ ctx }) => {
               {f.label}
             </button>
           ))}
+          {activeTab === 'active' && libraryCount > 0 && (
+            <button onClick={() => setShowLibraries(v => !v)}
+              title={showLibraries ? 'Hide library mods' : 'Show library mods'}
+              style={{
+                padding: '6px 16px', borderRadius: 99, fontSize: 13, fontWeight: 640, cursor: 'pointer', border: 0,
+                background: showLibraries ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.03)',
+                color: showLibraries ? 'var(--text-dim)' : 'var(--text-ghost)',
+                outline: '1px solid rgba(255,255,255,0.08)',
+                transition: 'all .15s', display: 'inline-flex', alignItems: 'center', gap: 6,
+              }}>
+              <Icon name={showLibraries ? 'eye-slash' : 'layer-group'} style={{ fontSize: 10 }} />
+              {libraryCount} {libraryCount === 1 ? 'library' : 'libraries'}
+            </button>
+          )}
         </div>
 
         {/* ===== Grid ===== */}
@@ -2936,6 +2951,27 @@ function ModManager() {
     finally { setLoading(false); }
   };
 
+  const handleBatchReinstall = async () => {
+    if (!vmApiUrl) { addToast('No VM API configured', 'error'); return; }
+    const targets = mods.filter(m =>
+      !m.isCustom &&
+      !m.installedJarFile &&
+      (m.server_candidates || []).length >= 1 &&
+      vmDiskFiles && vmDiskFiles.find(f => f.startsWith(m.slug + '-') || f === m.slug + '.jar')
+    );
+    if (targets.length === 0) { addToast('All mods already have filenames recorded', 'info'); return; }
+    addToast(`Fixing filenames for ${targets.length} mod${targets.length === 1 ? '' : 's'}...`, 'info');
+    let done = 0, failed = 0;
+    for (const mod of targets) {
+      try {
+        await handleInstallMod(mod, mod.server_candidates[0]);
+        done++;
+      } catch (e) { failed++; }
+      await new Promise(r => setTimeout(r, 600));
+    }
+    addToast(`Fixed ${done} mod${done === 1 ? '' : 's'}${failed > 0 ? `, ${failed} failed` : ''}`);
+  };
+
   // Fetches categories/tags from Modrinth for all mods that are missing them and saves to Firestore
   const handleSyncTagsFromModrinth = async () => {
     const loaderTags = new Set(['fabric','forge','quilt','neoforge','liteloader']);
@@ -3142,7 +3178,7 @@ function ModManager() {
     newServerName, setNewServerName, newServerIP, setNewServerIP, fileInputRef, importStatus,
     heroNote, handleSaveHeroNote,
     attemptJoin, handleCreateServer, enterDemo, handleLogout, saveVersions, handleAddCustomMod, handleAddMod,
-    handleRemoveMod, handleRemoveConfirmed, handleApproveWishlist, handleVote, handleInstallMod, handleRemoveFromVM, handleVmSync, handleSyncVersionsFromDisk, handleSyncTagsFromModrinth,
+    handleRemoveMod, handleRemoveConfirmed, handleApproveWishlist, handleVote, handleInstallMod, handleRemoveFromVM, handleVmSync, handleSyncVersionsFromDisk, handleSyncTagsFromModrinth, handleBatchReinstall,
     handleUpdateNote, handleToggleMod, handleVersionChange, handleSaveSettings, handleExportBackup, triggerImport, handleImportBackup, checkAllUpdates,
     activeDependencyIds, activeEditingMod, isSyncMismatch,
     dependencyOf
