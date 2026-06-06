@@ -36,7 +36,7 @@
   --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Menlo", monospace;
   --font-display: "Instrument Serif", "Newsreader", Georgia, "Times New Roman", serif;
 
-  /* ===== AURORA (default) — elegant cobalt <-> sunset coral ===== */
+  /* ===== AURORA (default) -- elegant cobalt <-> sunset coral ===== */
   /* Base canvas */
   --bg-0: #1e3060;
   --bg-1: #162448;
@@ -47,14 +47,14 @@
   --text-faint: rgba(226,228,242,0.62);
   --text-ghost: rgba(222,224,240,0.40);
 
-  /* Accent — warm sunset coral */
+  /* Accent -- warm sunset coral */
   --acc-1: #ff8a5b;
   --acc-2: #ff6f8e;
   --acc-grad: linear-gradient(118deg, #ffb070 0%, #ff7e63 52%, #ff6f93 100%);
   --acc-glow: rgba(255,126,99,0.42);
   --acc-soft: rgba(255,138,91,0.18);
 
-  /* Glass — refined translucent */
+  /* Glass -- refined translucent */
   --glass-bg:        rgba(14,22,44,0.26);
   --glass-bg-2:      rgba(255,255,255,0.13);
   --glass-bg-strong: rgba(16,24,48,0.56);
@@ -76,11 +76,11 @@
   --r-md: 16px;
   --r-sm: 11px;
 
-  /* Shadows — softer, warm-tinted */
+  /* Shadows -- softer, warm-tinted */
   --shadow-glass: 0 22px 50px -28px rgba(24,16,40,0.55), 0 2px 10px -4px rgba(20,14,38,0.30);
   --shadow-pop:   0 44px 90px -36px rgba(18,10,34,0.62);
 
-  /* Wallpaper — dramatic gradient mesh, orange <-> cobalt */
+  /* Wallpaper -- dramatic gradient mesh, orange <-> cobalt */
   --wallpaper:
     radial-gradient(110% 100% at 0% 0%,    #2a62f0 0%, rgba(42,98,240,0) 54%),
     radial-gradient(110% 100% at 100% 100%, #df6430 0%, rgba(223,100,48,0) 54%),
@@ -88,7 +88,7 @@
     linear-gradient(138deg, #1e52d8 0%, #2a5cc8 20%, #7860aa 46%, #c05c38 70%, #c84c22 100%);
 }
 
-/* ===== FROST — cool cyan / blue / lilac, brighter glass ===== */
+/* ===== FROST -- cool cyan / blue / lilac, brighter glass ===== */
 body.theme-frost {
   --bg-0: #1a3258;
   --bg-1: #12264a;
@@ -112,7 +112,7 @@ body.theme-frost {
     linear-gradient(140deg, #2a82cc 0%, #3a8ad6 28%, #8ab0e0 50%, #9888e8 75%, #6050d8 100%);
 }
 
-/* ===== NEBULA — vivid pink / orange / blue ===== */
+/* ===== NEBULA -- vivid pink / orange / blue ===== */
 body.theme-nebula {
   --bg-0: #2e1848;
   --bg-1: #1e0e32;
@@ -736,7 +736,7 @@ const NoteInput = ({ initialValue, onSave, isLocked = false }) => {
         value={value}
         onChange={e => { setValue(e.target.value); setSaved(false); }}
         onBlur={() => { if (value !== initialValue) { onSave(value); setSaved(true); } }}
-        placeholder="Add a note for the crew…"
+        placeholder="Add a note for the crew..."
         rows={1}
         style={{
           width: '100%', background: 'transparent', border: 0, color: 'var(--text)',
@@ -782,7 +782,7 @@ const DependencySection = ({ mod, allMods, onAdd, onEdit }) => {
       return {
         ...dep,
         status: local ? 'installed' : 'missing',
-        title: local ? local.title : (info.title || 'Loading…'),
+        title: local ? local.title : (info.title || 'Loading...'),
         slug: local ? local.slug : info.slug,
         modData: local,
       };
@@ -978,7 +978,7 @@ const ModCard = ({ mod, allMods, isCheckingUpdates, accessLevel, activeTab, onVe
             modInstallState === 'installing' || modInstallState === 'removing' ? (
               <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: 'var(--acc-1)', flexShrink: 0 }}>
                 <Icon name="arrows-rotate" className="spin" style={{ fontSize: 11 }} />
-                {modInstallState === 'installing' ? 'Installing…' : 'Removing…'}
+                {modInstallState === 'installing' ? 'Installing...' : 'Removing...'}
               </span>
             ) : modInstallState === 'error' ? (
               <span style={{ fontSize: 12.5, color: 'var(--bad)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 5 }}>
@@ -1162,9 +1162,9 @@ const CustomModModal = ({ isOpen, onClose, onAdd, storage }) => {
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div className="divider" style={{ flex: 1 }} /><span style={{ fontSize: 11, color: 'var(--text-ghost)' }}>OR USE URL</span><div className="divider" style={{ flex: 1 }} />
           </div>
-          <Field label="Direct Download URL" mono value={url} onChange={e => { setUrl(e.target.value); setFile(null); }} disabled={!!file} placeholder={file ? "File selected" : "https://…"} />
+          <Field label="Direct Download URL" mono value={url} onChange={e => { setUrl(e.target.value); setFile(null); }} disabled={!!file} placeholder={file ? "File selected" : "https://..."} />
           <Button type="submit" disabled={!name.trim() || uploading} block style={{ marginTop: 4, background: 'linear-gradient(120deg,#b56bff,#7d4fe0)', color: '#fff' }}>
-            {uploading ? <span className="pulse">Uploading…</span> : 'Add Custom Mod'}
+            {uploading ? <span className="pulse">Uploading...</span> : 'Add Custom Mod'}
           </Button>
         </form>
       </div>
@@ -1227,7 +1227,7 @@ const SettingsModal = ({ isOpen, onClose, initialName, initialIP, initialUrl, in
               <span style={{ marginLeft: 'auto', fontSize: 9.5, fontWeight: 600, color: 'var(--good)', textTransform: 'none', letterSpacing: 0 }}>Stored locally only</span>
             </label>
             <div style={{ position: 'relative' }}>
-              <input className="field field-mono" type={showKey ? 'text' : 'password'} value={vmKey} onChange={e => setVmKey(e.target.value)} placeholder="Paste API key…" autoComplete="off" style={{ paddingRight: 40, fontSize: 12 }} />
+              <input className="field field-mono" type={showKey ? 'text' : 'password'} value={vmKey} onChange={e => setVmKey(e.target.value)} placeholder="Paste API key..." autoComplete="off" style={{ paddingRight: 40, fontSize: 12 }} />
               <button type="button" onClick={() => setShowKey(v => !v)} style={{ position: 'absolute', right: 4, top: 4, bottom: 4, width: 32, background: 'transparent', border: 0, color: 'var(--text-faint)', cursor: 'pointer' }}>
                 <Icon name={showKey ? 'eye-slash' : 'eye'} style={{ fontSize: 12 }} />
               </button>
@@ -1324,7 +1324,7 @@ const InstallConfirmModal = ({ target, onClose, onInstall }) => {
         )}
         {phase === 'idle' && mod.isCustom && <p style={{ fontSize: 12, color: 'var(--text-faint)', fontFamily: 'var(--mono)', marginBottom: 18 }}>{mod.customUrl ? 'Storage URL' : 'Manual install required'}</p>}
 
-        {phase === 'installing' && <div style={{ display: 'flex', justifyContent: 'center', gap: 9, padding: '16px 0', color: 'var(--acc-1)', fontSize: 14 }}><Icon name="arrows-rotate" className="spin" /> Installing {mod.isCustom ? mod.title : selectedVersion}…</div>}
+        {phase === 'installing' && <div style={{ display: 'flex', justifyContent: 'center', gap: 9, padding: '16px 0', color: 'var(--acc-1)', fontSize: 14 }}><Icon name="arrows-rotate" className="spin" /> Installing {mod.isCustom ? mod.title : selectedVersion}...</div>}
         {phase === 'done' && <div style={{ display: 'flex', justifyContent: 'center', gap: 9, padding: '16px 0', color: 'var(--good)', fontSize: 14, fontWeight: 600 }}><Icon name="circle-check" style={{ fontSize: 18 }} /> Installed!</div>}
         {phase === 'error' && <div style={{ color: 'var(--bad)', fontSize: 12.5, marginBottom: 14, display: 'flex', gap: 7 }}><Icon name="triangle-exclamation" style={{ marginTop: 2, flexShrink: 0 }} /> {errMsg}</div>}
 
@@ -1367,7 +1367,7 @@ const VmSyncModal = ({ isOpen, onClose, loading, data, mods }) => {
           <h3 style={{ margin: 0, fontSize: 19, fontWeight: 680, letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', gap: 10 }}><Icon name="hard-drive" className="gradient-text" /> VM Sync</h3>
           <button className="icon-x" style={{ position: 'static' }} onClick={onClose}><Icon name="xmark" /></button>
         </div>
-        {loading && <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '48px 0', color: 'var(--text-dim)' }}><Icon name="arrows-rotate" className="spin" style={{ marginRight: 12 }} /> Fetching from VM…</div>}
+        {loading && <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '48px 0', color: 'var(--text-dim)' }}><Icon name="arrows-rotate" className="spin" style={{ marginRight: 12 }} /> Fetching from VM...</div>}
         {data && data.error && <div style={{ background: 'rgba(255,107,107,0.1)', border: '1px solid rgba(255,107,107,0.3)', borderRadius: 12, padding: 16, color: 'var(--bad)', fontSize: 13 }}>{data.error}</div>}
         {data && data.files && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20, overflowY: 'auto' }}>
@@ -1427,7 +1427,7 @@ const LoginView = ({ ctx }) => {
             </div>
             {error && <p style={{ margin: 0, fontSize: 13, color: 'var(--bad)', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}><Icon name="circle-exclamation" style={{ fontSize: 12 }} /> {error}</p>}
             <Button type="submit" block size="lg" disabled={loading || !joinCode}>
-              {loading ? <><Icon name="arrows-rotate" className="spin" /> Connecting…</> : <>Join Server <Icon name="arrow-right" style={{ fontSize: 13 }} /></>}
+              {loading ? <><Icon name="arrows-rotate" className="spin" /> Connecting...</> : <>Join Server <Icon name="arrow-right" style={{ fontSize: 13 }} /></>}
             </Button>
           </form>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14, margin: '28px 0 20px' }}>
@@ -1458,7 +1458,7 @@ const CreateView = ({ ctx }) => {
             <Field label="Server IP (optional)" mono value={newServerIP} onChange={e => setNewServerIP(e.target.value)} placeholder="play.myserver.com" />
             {error && <p style={{ margin: 0, fontSize: 13, color: 'var(--bad)', display: 'flex', alignItems: 'center', gap: 7 }}><Icon name="circle-exclamation" style={{ fontSize: 12 }} /> {error}</p>}
             <Button type="submit" block size="lg" disabled={loading || !newServerName.trim()} style={{ marginTop: 4 }}>
-              {loading ? <><Icon name="arrows-rotate" className="spin" /> Creating…</> : <><Icon name="bolt" style={{ fontSize: 12 }} /> Create Server</>}
+              {loading ? <><Icon name="arrows-rotate" className="spin" /> Creating...</> : <><Icon name="bolt" style={{ fontSize: 12 }} /> Create Server</>}
             </Button>
           </form>
         </Glass>
@@ -1581,7 +1581,7 @@ const AddModConfirmModal = ({ target, onClose, onAddListOnly, onAddAndInstall, v
           )}
           {phase === 'installing' && (
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 10, padding: '20px 0', color: 'var(--acc-1)', fontSize: 14 }}>
-              <Icon name="arrows-rotate" className="spin" /> Installing {selectedVersion} to VM…
+              <Icon name="arrows-rotate" className="spin" /> Installing {selectedVersion} to VM...
             </div>
           )}
           {phase === 'done' && (
@@ -1718,7 +1718,7 @@ const MigrationModal = ({ isOpen, onClose, mods, serverVersion, targetVersion, s
           {isAdmin && (
             <Button variant="glass" onClick={() => checkAllUpdates()} disabled={checkingUpdates}>
               <Icon name="arrows-rotate" className={checkingUpdates ? 'spin' : ''} style={{ fontSize: 12 }} />
-              {checkingUpdates ? 'Checking…' : 'Refresh mod builds'}
+              {checkingUpdates ? 'Checking...' : 'Refresh mod builds'}
             </Button>
           )}
           <Button variant="glass" onClick={() => { setShowScriptModal(true); onClose(); }}>
@@ -1763,7 +1763,7 @@ const AdminNoteCard = ({ heroNote, isAdmin, onSave }) => {
         <textarea value={draft} onChange={e => setDraft(e.target.value)}
           onBlur={commit}
           onKeyDown={e => { if (e.key === 'Escape') { setDraft(heroNote || ''); setEditing(false); } }}
-          placeholder="Pin a note for the crew…"
+          placeholder="Pin a note for the crew..."
           style={{
             flex: 1, background: 'rgba(0,0,0,0.2)', border: '1px solid var(--glass-border)', borderRadius: 10,
             color: 'var(--text)', fontFamily: 'var(--font)', fontSize: 13.5, lineHeight: 1.55,
@@ -1819,8 +1819,8 @@ const ChangelogCard = ({ mods, targetVersion, isAdmin, checkAllUpdates, checking
         {isAdmin && (
           <button onClick={() => checkAllUpdates()} disabled={checkingUpdates}
             style={{ alignSelf: 'flex-start', background: 'rgba(255,255,255,0.07)', border: '1px solid var(--glass-border)', borderRadius: 10, color: 'var(--text-dim)', fontFamily: 'var(--font)', fontSize: 12.5, fontWeight: 600, cursor: checkingUpdates ? 'not-allowed' : 'pointer', padding: '7px 14px', display: 'flex', alignItems: 'center', gap: 7, transition: 'all .15s', opacity: checkingUpdates ? 0.5 : 1 }}>
-            <Icon name=”arrows-rotate” className={checkingUpdates ? 'spin' : ''} style={{ fontSize: 11 }} />
-            {checkingUpdates ? 'Checking…' : 'Refresh mod builds'}
+            <Icon name="arrows-rotate" className={checkingUpdates ? 'spin' : ''} style={{ fontSize: 11 }} />
+            {checkingUpdates ? 'Checking...' : 'Refresh mod builds'}
           </button>
         )}
         </div>
@@ -1847,7 +1847,7 @@ const ChangelogCard = ({ mods, targetVersion, isAdmin, checkAllUpdates, checking
               )}
               {expanded === mod.id && (
                 <pre style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--text-faint)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: 1.55, fontFamily: 'var(--font)', maxHeight: 140, overflowY: 'auto', padding: '8px 10px', background: 'rgba(0,0,0,0.2)', borderRadius: 8 }}>
-                  {mod.target_changelog.length > 800 ? mod.target_changelog.slice(0, 800) + '\n…' : mod.target_changelog}
+                  {mod.target_changelog.length > 800 ? mod.target_changelog.slice(0, 800) + '\n...' : mod.target_changelog}
                 </pre>
               )}
             </div>
@@ -2012,7 +2012,7 @@ const DashboardView = ({ ctx }) => {
             <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 2 }}>
               <span style={{ fontSize: 11, color: 'var(--text-faint)', display: 'flex', alignItems: 'center', gap: 5 }}>
                 <Icon name={isSyncing ? 'arrows-rotate' : 'circle-nodes'} className={isSyncing ? 'spin' : ''} style={{ fontSize: 9 }} />
-                {demo ? 'Demo' : isSyncing ? 'Syncing…' : 'Live'}
+                {demo ? 'Demo' : isSyncing ? 'Syncing...' : 'Live'}
               </span>
               {isAdmin && <Badge color="green" icon="shield-halved">Admin</Badge>}
               {!isAdmin && <Badge color="blue" icon="user">Member</Badge>}
@@ -2131,7 +2131,7 @@ const DashboardView = ({ ctx }) => {
           {/* search within */}
           <div style={{ position: 'relative', width: 200 }} className="hide-sm">
             <Icon name="magnifying-glass" style={{ position: 'absolute', left: 12, top: 11, fontSize: 12, color: 'var(--text-faint)' }} />
-            <input className="field" value={filterQuery} onChange={e => setFilterQuery(e.target.value)} placeholder="Filter…" style={{ padding: '9px 12px 9px 32px', fontSize: 13 }} />
+            <input className="field" value={filterQuery} onChange={e => setFilterQuery(e.target.value)} placeholder="Filter..." style={{ padding: '9px 12px 9px 32px', fontSize: 13 }} />
           </div>
           <div style={{ width: 130 }} className="hide-sm">
             <Select value={sortBy} onChange={e => setSortBy(e.target.value)}>
@@ -2209,7 +2209,7 @@ const DashboardView = ({ ctx }) => {
                 <Icon name="magnifying-glass" style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', fontSize: 15, color: 'var(--text-faint)', pointerEvents: 'none' }} />
                 <input className="field" value={modInput} onChange={e => { setModInput(e.target.value); setError(null); }}
                   onKeyDown={e => { if (e.key === 'Enter') handleAddMod(e); }}
-                  placeholder={`Search Modrinth to add a mod…`}
+                  placeholder={`Search Modrinth to add a mod...`}
                   style={{ padding: '13px 16px 13px 42px', fontSize: 15, borderRadius: 14 }} />
                 {showDropdown && searchResults.length > 0 && (
                   <Glass strong style={{ position: 'absolute', top: 'calc(100% + 8px)', left: 0, right: 0, zIndex: 30, padding: 8, borderRadius: 18, maxHeight: 400, overflowY: 'auto' }}>
@@ -2310,7 +2310,7 @@ const DashboardView = ({ ctx }) => {
               {filterQuery || filter !== 'all' ? 'Nothing matches that filter' : activeTab === 'wishlist' ? 'No wishlist requests yet' : 'No mods on the server yet'}
             </p>
             <p style={{ margin: 0, fontSize: 13.5, color: 'var(--text-faint)' }}>
-              {filterQuery || filter !== 'all' ? 'Try clearing your search or filter.' : 'Use “Add Mod” to search Modrinth and add your first one.'}
+              {filterQuery || filter !== 'all' ? 'Try clearing your search or filter.' : 'Use "Add Mod" to search Modrinth and add your first one.'}
             </p>
             {!filterQuery && filter === 'all' && <Button onClick={() => setShowAddMod(true)} style={{ marginTop: 18 }}><Icon name="plus" style={{ fontSize: 12 }} /> Add a mod</Button>}
           </Glass>
