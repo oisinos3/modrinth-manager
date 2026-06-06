@@ -277,7 +277,7 @@ body {
 
 .btn-sm { padding: 6px 12px; font-size: 12.5px; }
 .btn-lg { padding: 13px 22px; font-size: 15px; }
-.btn-icon { padding: 9px; border-radius: 50%; will-change: transform; }
+.btn-icon { padding: 9px; border-radius: 50%; }
 .btn-block { width: 100%; }
 
 /* ============================================================
@@ -1563,21 +1563,21 @@ const AddModConfirmModal = ({ target, onClose, onAddListOnly, onAddAndInstall, v
               )}
             </div>
           ) : (
-            <p style={{ marginBottom: 18, fontSize: 12.5, color: 'var(--warn)', display: 'flex', gap: 6 }}><Icon name="triangle-exclamation" style={{ fontSize: 12, marginTop: 1 }} /> No versions found for current server version. Mod may still be added.</p>
+            <p style={{ marginBottom: 18, fontSize: 12.5, color: 'var(--warn)', display: 'flex', gap: 6 }}><Icon name="triangle-exclamation" style={{ fontSize: 12, marginTop: 1 }} /> No compatible versions found for this server's Minecraft version. Cannot install.</p>
           )}
 
           {phase === 'idle' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
-              {vmApiUrl && (
-                <Button block onClick={handleListAndInstall} disabled={!selectedVersion && candidates.length > 0}>
+              {vmApiUrl && candidates.length > 0 && (
+                <Button block onClick={handleListAndInstall}>
                   <Icon name="cloud-arrow-down" style={{ fontSize: 13 }} />
                   Add to list + install JAR to server
                 </Button>
               )}
-              <div style={{ height: vmApiUrl ? 5 : 0 }} />
+              <div style={{ height: vmApiUrl && candidates.length > 0 ? 5 : 0 }} />
               <Button variant="glass" block onClick={handleListOnly}>
                 <Icon name="list" style={{ fontSize: 13 }} />
-                {vmApiUrl ? 'Add to list only' : 'Add mod'}
+                {vmApiUrl && candidates.length > 0 ? 'Add to list only' : 'Add to list'}
               </Button>
               <Button variant="ghost" block onClick={onClose}>Cancel</Button>
             </div>
@@ -1921,13 +1921,14 @@ const DashboardView = ({ ctx }) => {
 
   const visible = useMemo(() => {
     let list = [...baseList];
-    if (activeTab === 'active' && !showLibraries && !filterQuery.trim()) list = list.filter(m => !isLibraryMod(m));
+    if (activeTab === 'active' && !showLibraries && !filterQuery.trim() && filter !== 'library') list = list.filter(m => !isLibraryMod(m));
     // Status filter
     if (filter === 'custom') list = list.filter(m => m.isCustom);
     if (filter === 'missing') list = list.filter(m => !m.isCustom && m.target_version_number === 'None Found');
     if (filter === 'not-installed') list = list.filter(m => vmDiskFiles !== null && !vmDiskFiles.some(f => f.startsWith(m.slug + '-') || f === m.slug + '.jar'));
     if (filter === 'server-only') list = list.filter(m => m.server_side === 'required' && m.client_side === 'unsupported');
     if (filter === 'client-only') list = list.filter(m => m.client_side === 'required' && m.server_side === 'unsupported');
+    if (filter === 'library') list = list.filter(m => isLibraryMod(m));
     if (filterQuery.trim()) {
       const q = filterQuery.toLowerCase();
       list = list.filter(m => m.title.toLowerCase().includes(q) || (m.description || '').toLowerCase().includes(q));
@@ -2057,7 +2058,7 @@ const DashboardView = ({ ctx }) => {
       <div style={{ maxWidth: 1440, margin: '0 auto', padding: '8px 28px 0', display: 'flex', flexDirection: 'column', gap: 22 }}>
 
         {/* ===== Hero - bento layout ===== */}
-        <div className="fade-in hero-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 200px', gap: 16, alignItems: 'stretch' }}>
+        <div className="fade-in hero-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 200px', gap: 16, alignItems: 'stretch', contain: 'layout style' }}>
 
           {/* Panel 1: stats + IP + codes */}
           <Glass style={{ padding: 22, borderRadius: 'var(--r-xl)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 16 }}>
@@ -2164,7 +2165,7 @@ const DashboardView = ({ ctx }) => {
           <div style={{ position: 'relative' }} ref={actionsRef}>
             <IconBtn name="ellipsis" title="More" active={showActionsMenu} onClick={() => setShowActionsMenu(v => !v)} />
             {showActionsMenu && (
-              <div className="fade-in" style={{ position: 'absolute', right: 0, top: 46, width: 240, padding: 7, zIndex: 50, borderRadius: 18, background: 'rgba(12,18,38,0.99)', border: '1px solid var(--glass-border)', boxShadow: '0 4px 16px rgba(0,0,0,0.6)', transform: 'translateZ(0)' }}>
+              <div className="fade-in" style={{ position: 'absolute', right: 0, top: 46, width: 240, padding: 7, zIndex: 50, borderRadius: 18, background: 'rgba(12,18,38,0.99)', border: '1px solid rgba(255,255,255,0.14)' }}>
                 {[
                   // Group 1: add / script
                   [
@@ -2293,6 +2294,7 @@ const DashboardView = ({ ctx }) => {
             activeTab === 'active' && vmDiskFiles !== null && { value: 'not-installed', label: 'Not on Server', color: 'var(--warn)' },
             activeTab === 'active' && { value: 'server-only', label: 'Server Only', color: 'var(--good)' },
             activeTab === 'active' && { value: 'client-only', label: 'Client Only', color: 'var(--info)' },
+            activeTab === 'active' && libraryCount > 0 && { value: 'library', label: `Libraries (${libraryCount})`, color: 'var(--text-faint)' },
           ].filter(Boolean).map(f => (
             <button key={f.value} onClick={() => setFilter(f.value)}
               style={{
@@ -2305,20 +2307,6 @@ const DashboardView = ({ ctx }) => {
               {f.label}
             </button>
           ))}
-          {activeTab === 'active' && libraryCount > 0 && (
-            <button onClick={() => setShowLibraries(v => !v)}
-              title={showLibraries ? 'Hide library mods' : 'Show library mods'}
-              style={{
-                padding: '6px 16px', borderRadius: 99, fontSize: 13, fontWeight: 640, cursor: 'pointer', border: 0,
-                background: showLibraries ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.03)',
-                color: showLibraries ? 'var(--text-dim)' : 'var(--text-ghost)',
-                outline: '1px solid rgba(255,255,255,0.08)',
-                transition: 'all .15s', display: 'inline-flex', alignItems: 'center', gap: 6,
-              }}>
-              <Icon name={showLibraries ? 'eye-slash' : 'layer-group'} style={{ fontSize: 10 }} />
-              {libraryCount} {libraryCount === 1 ? 'library' : 'libraries'}
-            </button>
-          )}
         </div>
 
         {/* ===== Grid ===== */}
