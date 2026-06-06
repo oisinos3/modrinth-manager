@@ -870,7 +870,7 @@ const ModCard = ({ mod, allMods, isCheckingUpdates, accessLevel, activeTab, onVe
     <Glass className={`lift ${isCheckingUpdates ? 'pulse' : ''}`}
       style={{
         padding: 20, borderRadius: 'var(--r-md)', display: 'flex', flexDirection: 'column',
-        opacity: isEnabled ? 1 : 0.5, filter: isEnabled ? 'none' : 'grayscale(0.7)',
+        opacity: isEnabled ? 1 : 0.55, filter: 'none',
         height: '100%',
       }}>
 
@@ -2162,7 +2162,7 @@ const DashboardView = ({ ctx }) => {
             </button>
           )}
           {/* overflow */}
-          <div style={{ position: 'relative' }} ref={actionsRef}>
+          <div style={{ position: 'relative', isolation: 'isolate' }} ref={actionsRef}>
             <IconBtn name="ellipsis" title="More" active={showActionsMenu} onClick={() => setShowActionsMenu(v => !v)} />
             {showActionsMenu && (
               <div className="fade-in" style={{ position: 'absolute', right: 0, top: 46, width: 240, padding: 7, zIndex: 50, borderRadius: 18, background: 'rgba(12,18,38,0.99)', border: '1px solid var(--glass-border)', boxShadow: '0 4px 16px rgba(0,0,0,0.6)', transform: 'translateZ(0)' }}>
@@ -2871,7 +2871,7 @@ function ModManager() {
         ? { ...m, installedJarFile: actualFilename, installed_version: mod.isCustom ? m.installed_version : versionNumber }
         : m);
       await saveToServer(updatedMods, null);
-      setVmDiskFiles(p => p ? [...p.filter(f => !f.startsWith(mod.slug + '-') && f !== mod.slug + '.jar'), actualFilename] : [actualFilename]);
+      setVmDiskFiles(p => p ? [...p.filter(f => { const b = f.replace(/\.disabled$/, ''); return !b.startsWith(mod.slug + '-') && b !== mod.slug + '.jar'; }), actualFilename] : [actualFilename]);
       addToast(`${mod.title}${mod.isCustom ? '' : ' ' + versionNumber} installed to VM`);
       setInstallStatus(p => ({ ...p, [mod.id]: 'done' }));
       setTimeout(() => setInstallStatus(p => { const n = { ...p }; delete n[mod.id]; return n; }), 3000);
