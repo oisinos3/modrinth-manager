@@ -1746,7 +1746,7 @@ const AdminNoteCard = ({ heroNote, isAdmin, onSave }) => {
   return (
     <Glass style={{ padding: 22, borderRadius: 'var(--r-xl)', display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 400, color: 'var(--text-dim)', letterSpacing: '-0.01em' }}>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 400, color: 'var(--text-dim)', letterSpacing: '-0.015em' }}>
           Server Notes
         </div>
         {isAdmin && (
@@ -1785,7 +1785,7 @@ const AdminNoteCard = ({ heroNote, isAdmin, onSave }) => {
 };
 
 // ---------- Changelog / What's New bento card ----------
-const ChangelogCard = ({ mods, targetVersion }) => {
+const ChangelogCard = ({ mods, targetVersion, isAdmin, checkAllUpdates, checkingUpdates }) => {
   const [expanded, setExpanded] = useState(null);
 
   const updatable = useMemo(() => mods.filter(m =>
@@ -1801,7 +1801,7 @@ const ChangelogCard = ({ mods, targetVersion }) => {
   return (
     <Glass style={{ padding: 22, borderRadius: 'var(--r-xl)', display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 400, color: 'var(--text-dim)', letterSpacing: '-0.01em', flex: 1 }}>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 400, color: 'var(--text-dim)', letterSpacing: '-0.015em', flex: 1 }}>
           What's New
         </div>
         {updatable.length > 0 && (
@@ -1813,8 +1813,15 @@ const ChangelogCard = ({ mods, targetVersion }) => {
 
       {updatable.length === 0 ? (
         <p style={{ margin: 0, fontSize: 13, color: 'var(--text-ghost)', fontStyle: 'italic' }}>
-          All changelogs up to date for {targetVersion}. Run “Refresh mod builds” to populate.
+          All changelogs up to date for {targetVersion}.{!isAdmin ? ' Ask an admin to run Refresh mod builds.' : ''}
         </p>
+        {isAdmin && (
+          <button onClick={() => checkAllUpdates()} disabled={checkingUpdates}
+            style={{ alignSelf: 'flex-start', background: 'rgba(255,255,255,0.07)', border: '1px solid var(--glass-border)', borderRadius: 10, color: 'var(--text-dim)', fontFamily: 'var(--font)', fontSize: 12.5, fontWeight: 600, cursor: checkingUpdates ? 'not-allowed' : 'pointer', padding: '7px 14px', display: 'flex', alignItems: 'center', gap: 7, transition: 'all .15s', opacity: checkingUpdates ? 0.5 : 1 }}>
+            <Icon name=”arrows-rotate” className={checkingUpdates ? 'spin' : ''} style={{ fontSize: 11 }} />
+            {checkingUpdates ? 'Checking…' : 'Refresh mod builds'}
+          </button>
+        )}
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, overflowY: 'auto', maxHeight: 180 }}>
           {updatable.map(mod => (
@@ -1994,7 +2001,7 @@ const DashboardView = ({ ctx }) => {
     <div style={{ minHeight: '100vh', paddingBottom: 60 }}>
       {/* ===== Top nav ===== */}
       <div style={{ position: 'sticky', top: 0, zIndex: 40, padding: '14px 28px',
-        background: 'linear-gradient(180deg, rgba(5,7,13,0.75), rgba(5,7,13,0))', backdropFilter: 'blur(12px)' }}>
+        background: 'linear-gradient(180deg, rgba(5,7,13,0.82), rgba(5,7,13,0.04))' }}>
         <div style={{ maxWidth: 1440, margin: '0 auto', display: 'flex', alignItems: 'center', gap: 14 }}>
           {/* Left: brand + server name */}
           <Brand size={36} />
@@ -2085,7 +2092,7 @@ const DashboardView = ({ ctx }) => {
           <AdminNoteCard heroNote={heroNote} isAdmin={isAdmin} onSave={handleSaveHeroNote} />
 
           {/* Panel 3: Changelog / What's New */}
-          <ChangelogCard mods={mods} targetVersion={targetVersion} />
+          <ChangelogCard mods={mods} targetVersion={targetVersion} isAdmin={isAdmin} checkAllUpdates={() => checkAllUpdates(mods, 'active')} checkingUpdates={checkingUpdates} />
 
           {/* Panel 4: Server status */}
           <Glass style={{ padding: 22, borderRadius: 'var(--r-xl)', display: 'flex', flexDirection: 'column', gap: 14, justifyContent: 'center' }}>
@@ -2151,7 +2158,7 @@ const DashboardView = ({ ctx }) => {
           <div style={{ position: 'relative' }} ref={actionsRef}>
             <IconBtn name="ellipsis" title="More" active={showActionsMenu} onClick={() => setShowActionsMenu(v => !v)} />
             {showActionsMenu && (
-              <Glass strong className="fade-in" style={{ position: 'absolute', right: 0, top: 46, width: 240, padding: 7, zIndex: 50, borderRadius: 18, boxShadow: '0 4px 18px -4px rgba(0,0,0,0.55), 0 1px 6px -2px rgba(0,0,0,0.3)', transform: 'translateZ(0)' }}>
+              <div className="fade-in" style={{ position: 'absolute', right: 0, top: 46, width: 240, padding: 7, zIndex: 50, borderRadius: 18, background: 'rgba(14,20,42,0.98)', border: '1px solid var(--glass-border)', boxShadow: '0 4px 18px -4px rgba(0,0,0,0.6)', transform: 'translateZ(0)' }}>
                 {[
                   // Group 1: add / script
                   [
@@ -2187,7 +2194,7 @@ const DashboardView = ({ ctx }) => {
                     ))}
                   </React.Fragment>
                 ))}
-              </Glass>
+              </div>
             )}
           </div>
         </div>
@@ -3135,6 +3142,3 @@ function ModManager() {
 
 ReactDOM.createRoot(document.getElementById('root')).render(<ModManager />);
 </script>
-
-</body>
-</html>
