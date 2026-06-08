@@ -888,14 +888,14 @@ const ModCard = ({ mod, allMods, isCheckingUpdates, accessLevel, activeTab, onVe
         )}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontWeight: 640, fontSize: 16, color: 'var(--text)', lineHeight: 1.25, letterSpacing: '-0.01em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{mod.title}</div>
-          <div style={{ display: 'flex', gap: 5, marginTop: 7, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 5, marginTop: 7, flexWrap: 'wrap', position: 'relative', zIndex: 2 }}>
             {mod.isCustom && <Badge color="purple" icon="upload">Custom</Badge>}
             {sideLabel && <Badge color={sideLabel.color}>{sideLabel.label}</Badge>}
             {activeTab === 'active' && vmDiskFiles !== null && (
               isOnDisk
                 ? isDisabledOnDisk
                   ? <span className="badge" style={{ background: 'rgba(255,207,74,0.25)', color: '#ffe14a', borderColor: 'rgba(255,207,74,0.8)', boxShadow: '0 0 12px rgba(255,207,74,0.45)', fontWeight: 700, position: 'relative', zIndex: 2 }}><Icon name="pause" style={{ fontSize: 9 }} /> Disabled on server</span>
-                  : <Badge color="green" icon="circle-check">On server</Badge>
+                  : <span className="badge" style={{ background: 'rgba(52,224,161,0.25)', color: '#34e0a1', borderColor: 'rgba(52,224,161,0.8)', boxShadow: '0 0 12px rgba(52,224,161,0.45)', fontWeight: 700, position: 'relative', zIndex: 2 }}><Icon name="circle-check" style={{ fontSize: 9 }} /> On server</span>
                 : <Badge color="slate" icon="hard-drive">Not installed</Badge>
             )}
             {mod.categories && mod.categories.slice(0, 2).map(cat => (
@@ -903,14 +903,14 @@ const ModCard = ({ mod, allMods, isCheckingUpdates, accessLevel, activeTab, onVe
             ))}
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 2, flexShrink: 0, marginTop: -2 }}>
+        <div style={{ display: 'flex', gap: 2, flexShrink: 0, marginTop: -2, position: 'relative', zIndex: 2 }}>
           <a href={mod.project_url || '#'} target="_blank" rel="noreferrer"
             className="btn btn-icon btn-ghost" style={{ padding: 8 }} title="Open on Modrinth">
             <Icon name="arrow-up-right-from-square" style={{ fontSize: 14 }} />
           </a>
           {activeTab === 'active' && accessLevel === 'admin' && onToggle && (
             <button onClick={() => onToggle(mod.id)} title={isEnabled ? 'Disable mod' : 'Enable mod'}
-              className="btn btn-icon btn-ghost" style={{ padding: 8, color: isEnabled ? 'var(--text-faint)' : 'var(--warn)' }}>
+              className="btn btn-icon btn-ghost" style={{ padding: 8, color: isEnabled ? 'var(--good)' : 'var(--warn)' }}>
               <Icon name={isEnabled ? 'toggle-on' : 'toggle-off'} style={{ fontSize: 18 }} />
             </button>
           )}
@@ -1766,7 +1766,7 @@ const AdminNoteCard = ({ heroNote, isAdmin, onSave }) => {
           Server Notes
         </div>
         {isAdmin && (
-          <button onClick={() => editing ? commit() : setEditing(true)}
+          <button onMouseDown={e => { if (editing) e.preventDefault(); }} onClick={() => editing ? commit() : setEditing(true)}
             title={editing ? 'Save note' : 'Edit note'}
             style={{ background: 'transparent', border: 0, cursor: 'pointer', padding: '4px 6px', borderRadius: 8, color: editing ? 'var(--good)' : 'var(--text-faint)', transition: 'color .15s' }}
             onMouseEnter={e => e.currentTarget.style.color = editing ? 'var(--good)' : 'var(--text)'}
