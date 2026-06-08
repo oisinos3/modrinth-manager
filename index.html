@@ -2061,7 +2061,7 @@ const DashboardView = ({ ctx }) => {
       <div style={{ maxWidth: 1440, margin: '0 auto', padding: '8px 28px 0', display: 'flex', flexDirection: 'column', gap: 22 }}>
 
         {/* ===== Hero - bento layout ===== */}
-        <div className="fade-in hero-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 200px', gap: 16, alignItems: 'stretch', contain: 'layout style' }}>
+        <div className="fade-in hero-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 200px', gap: 16, alignItems: 'stretch' }}>
 
           {/* Panel 1: stats + IP + codes */}
           <Glass style={{ padding: 22, borderRadius: 'var(--r-xl)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 16 }}>
@@ -2169,7 +2169,6 @@ const DashboardView = ({ ctx }) => {
             ref={actionsRef}
             style={{
               position: 'relative',
-              isolation: 'isolate',
               zIndex: 100
             }}
           >
