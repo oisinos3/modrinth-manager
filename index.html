@@ -2068,87 +2068,54 @@ const DashboardView = ({ ctx }) => {
 
   return (
     <div style={{ minHeight: '100vh', paddingBottom: 60 }}>
-      {/* ===== Top nav ===== */}
-      <div style={{ position: 'sticky', top: 0, zIndex: 100, padding: '14px 28px',
-        background: 'linear-gradient(180deg, rgba(5,7,13,0.82), rgba(5,7,13,0.04))' }}>
-        <div style={{ maxWidth: 1440, margin: '0 auto', display: 'flex', alignItems: 'center', gap: 14 }}>
-          {/* Left: brand + server name */}
-          <Brand size={36} />
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 400, letterSpacing: '-0.01em', lineHeight: 1.1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{serverName}</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 2 }}>
-              <span style={{ fontSize: 11, color: 'var(--text-faint)', display: 'flex', alignItems: 'center', gap: 5 }}>
-                <Icon name={isSyncing ? 'arrows-rotate' : 'circle-nodes'} className={isSyncing ? 'spin' : ''} style={{ fontSize: 9 }} />
-                {demo ? 'Demo' : isSyncing ? 'Syncing...' : 'Live'}
+        {/* ===== Hero ===== */}
+        <div className="fade-in" style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 32, alignItems: 'center' }}>
+
+          {/* Left: bare serif name + status */}
+          <div>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 58, fontWeight: 400, lineHeight: 1.0, letterSpacing: '-0.03em', color: 'var(--text)' }}>
+              {serverName}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 16 }}>
+              <span className={`status-dot ${serverStatus?.online ? 'status-on' : 'status-off'}`} style={{ width: 9, height: 9 }} />
+              <span style={{ fontSize: 13.5, fontWeight: 600, color: serverStatus?.online ? 'var(--good)' : 'var(--text-faint)' }}>
+                {serverStatus ? (serverStatus.online ? 'Online' : 'Offline') : '—'}
               </span>
-              {isAdmin && <Badge color="green" icon="shield-halved">Admin</Badge>}
-              {!isAdmin && <Badge color="blue" icon="user">Member</Badge>}
+              {serverStatus?.online && serverStatus.players && (
+                <span style={{ fontSize: 13, color: 'var(--text-ghost)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ color: 'var(--glass-border)' }}>·</span>
+                  <Icon name="users" style={{ fontSize: 10 }} />
+                  {serverStatus.players.online}/{serverStatus.players.max}
+                </span>
+              )}
+              <span style={{ color: 'var(--glass-border)' }}>·</span>
+              <span style={{ fontFamily: 'var(--mono)', fontSize: 12.5, fontWeight: 700, color: 'var(--acc-1)' }}>{serverVersion}</span>
             </div>
           </div>
 
-          <div style={{ flex: 1 }} />
-
-          {/* Centre: server status pill */}
-          <button onClick={() => {}} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '9px 18px', borderRadius: 999, background: 'rgba(0,0,0,0.32)', border: '1px solid var(--glass-border)', cursor: 'default', fontFamily: 'var(--font)' }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-              <span className={`status-dot ${serverStatus?.online ? 'status-on' : 'status-off'}`} />
-              <span style={{ fontSize: 13, fontWeight: 600, color: serverStatus?.online ? 'var(--good)' : 'var(--text-faint)' }}>
-                {serverStatus ? (serverStatus.online ? 'Online' : 'Offline') : 'Unknown'}
-              </span>
-            </span>
-            {serverStatus?.online && serverStatus.players && (
-              <>
-                <span style={{ width: 1, height: 14, background: 'var(--glass-border)' }} />
-                <span style={{ fontSize: 13, color: 'var(--text-dim)', display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <Icon name="users" style={{ fontSize: 11, color: 'var(--text-faint)' }} />
-                  {serverStatus.players.online}/{serverStatus.players.max}
-                </span>
-              </>
-            )}
-            <span style={{ width: 1, height: 14, background: 'var(--glass-border)' }} />
-            <span style={{ fontSize: 12, fontFamily: 'var(--mono)', fontWeight: 700, color: 'var(--acc-1)' }}>{serverVersion}</span>
-          </button>
-
-          <div style={{ flex: 1 }} />
-
-          {/* Right: actions */}
-          {isAdmin && <IconBtn name="gear" title="Settings" onClick={() => setShowSettingsModal(true)} />}
-          <IconBtn name="arrow-right-from-bracket" title="Leave" onClick={handleLogout} />
-        </div>
-      </div>
-
-      <div style={{ maxWidth: 1440, margin: '0 auto', padding: '8px 28px 0', display: 'flex', flexDirection: 'column', gap: 22 }}>
-
-        {/* ===== Hero ===== */}
-        <div className="fade-in" style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 16, alignItems: 'stretch' }}>
-
-          {/* Left: server identity */}
+          {/* Right: glass card — controls + stats + IP/codes */}
           <div style={{ overflow: 'hidden', borderRadius: 'var(--r-xl)' }}>
-            <Glass style={{ padding: 28, borderRadius: 'var(--r-xl)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 20, height: '100%' }}>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14 }}>
-                  <div style={{ fontFamily: 'var(--font-display)', fontSize: 46, fontWeight: 400, lineHeight: 1.0, letterSpacing: '-0.025em', color: 'var(--text)', flex: 1 }}>
-                    {serverName}
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexShrink: 0, paddingTop: 8 }}>
-                    <span className={`status-dot ${serverStatus?.online ? 'status-on' : 'status-off'}`} style={{ width: 9, height: 9 }} />
-                    <span style={{ fontSize: 12.5, fontWeight: 620, color: serverStatus?.online ? 'var(--good)' : 'var(--text-faint)' }}>
-                      {serverStatus ? (serverStatus.online ? 'Online' : 'Offline') : '—'}
-                    </span>
-                    {serverStatus?.online && serverStatus.players && (
-                      <span style={{ fontSize: 12, color: 'var(--text-ghost)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <Icon name="users" style={{ fontSize: 9 }} />{serverStatus.players.online}/{serverStatus.players.max}
-                      </span>
-                    )}
-                    <span style={{ fontFamily: 'var(--mono)', fontSize: 12, fontWeight: 700, color: 'var(--acc-1)' }}>{serverVersion}</span>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: 20, marginTop: 20 }}>
-                  <HeroStat icon="cube" label="Server mods" value={`${enabledCount} / ${mods.length}`} tone="var(--acc-1)" />
-                  <HeroStat icon="heart" label="Wishlist" value={wishlist.length} tone="var(--violet)" />
-                </div>
+            <Glass style={{ padding: 22, borderRadius: 'var(--r-xl)', display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+              {/* Controls row */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                {isAdmin
+                  ? <Badge color="green" icon="shield-halved">Admin</Badge>
+                  : <Badge color="blue" icon="user">Member</Badge>}
+                {demo && <Badge color="yellow" icon="flask">Demo</Badge>}
+                <div style={{ flex: 1 }} />
+                <IconBtn name="gear" title="Settings" onClick={() => setShowSettingsModal(true)} />
+                <IconBtn name="arrow-right-from-bracket" title="Leave" onClick={handleLogout} />
               </div>
-              <div style={{ borderTop: '1px solid var(--glass-border)', paddingTop: 16, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+
+              {/* Stats */}
+              <div style={{ display: 'flex', gap: 16 }}>
+                <HeroStat icon="cube" label="Server mods" value={`${enabledCount} / ${mods.length}`} tone="var(--acc-1)" />
+                <HeroStat icon="heart" label="Wishlist" value={wishlist.length} tone="var(--violet)" />
+              </div>
+
+              {/* IP + codes */}
+              <div style={{ borderTop: '1px solid var(--glass-border)', paddingTop: 14, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                 {serverIP ? <CopyChip value={serverIP} label="IP" icon="copy" /> : null}
                 {isAdmin && panelUrl && <a href={panelUrl} target="_blank" rel="noreferrer" className="btn btn-glass btn-sm"><Icon name="gauge-high" style={{ fontSize: 12 }} /> Console</a>}
                 {isAdmin ? (
@@ -2166,12 +2133,8 @@ const DashboardView = ({ ctx }) => {
                   </>
                 ) : null}
               </div>
-            </Glass>
-          </div>
 
-          {/* Right: Notes */}
-          <div style={{ overflow: 'hidden', borderRadius: 'var(--r-xl)' }}>
-            <AdminNoteCard heroNote={heroNote} isAdmin={isAdmin} onSave={handleSaveHeroNote} />
+            </Glass>
           </div>
 
         </div>
