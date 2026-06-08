@@ -1801,77 +1801,126 @@ const AdminNoteCard = ({ heroNote, isAdmin, onSave }) => {
   );
 };
 
-// ---------- Changelog / What's New bento card ----------
-const ChangelogCard = ({ mods, targetVersion, isAdmin, checkAllUpdates, checkingUpdates }) => {
-  const [expanded, setExpanded] = useState(null);
+// ---------- Recent Activity strip ----------
+const RecentActivityStrip = ({ mods, onOpenDrawer }) => {
+  const recent = useMemo(() =>
+    [...mods]
+      .filter(m => m.updated_at)
+      .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
+      .slice(0, 14),
+    [mods]);
 
-  const updatable = useMemo(() => mods.filter(m =>
-    !m.isCustom &&
-    m.target_version_number && m.target_version_number !== 'None Found' &&
-    m.target_version_number !== m.installed_version &&
-    m.target_changelog
-  ), [mods]);
+  const timeAgo = (iso) => {
+    const s = Math.floor((Date.now() - new Date(iso)) / 1000);
+    if (s < 60) return 'just now';
+    if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+    if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+    if (s < 604800) return `${Math.floor(s / 86400)}d ago`;
+    return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  };
 
-  const firstLine = (text) => (text || '').split('\n').find(l => l.trim()) || '';
-  const cleanLine = (text) => text.replace(/^#+\s*/, '').replace(/\*\*/g, '').replace(/`/g, '').trim();
+  if (!recent.length) return null;
 
   return (
-    <Glass style={{ padding: 22, borderRadius: 'var(--r-xl)', display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 400, color: 'var(--text-dim)', letterSpacing: '-0.015em', flex: 1 }}>
-          What's New
-        </div>
-        {updatable.length > 0 && (
-          <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 9px', borderRadius: 99, background: 'color-mix(in oklab, var(--acc-1) 18%, transparent)', color: 'var(--acc-1)', border: '1px solid color-mix(in oklab, var(--acc-1) 35%, transparent)' }}>
-            {updatable.length} update{updatable.length !== 1 ? 's' : ''} → {targetVersion}
-          </span>
-        )}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.09em', textTransform: 'uppercase', color: 'var(--text-faint)', whiteSpace: 'nowrap' }}>
+          Recent Activity
+        </span>
+        <div style={{ flex: 1, height: 1, background: 'linear-gradient(90deg, var(--glass-border), transparent)' }} />
       </div>
-
-      {updatable.length === 0 ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        <p style={{ margin: 0, fontSize: 13, color: 'var(--text-ghost)', fontStyle: 'italic' }}>
-          All changelogs up to date for {targetVersion}.{!isAdmin ? ' Ask an admin to run Refresh mod builds.' : ''}
-        </p>
-        {isAdmin && (
-          <button onClick={() => checkAllUpdates()} disabled={checkingUpdates}
-            style={{ alignSelf: 'flex-start', background: 'rgba(255,255,255,0.07)', border: '1px solid var(--glass-border)', borderRadius: 10, color: 'var(--text-dim)', fontFamily: 'var(--font)', fontSize: 12.5, fontWeight: 600, cursor: checkingUpdates ? 'not-allowed' : 'pointer', padding: '7px 14px', display: 'flex', alignItems: 'center', gap: 7, transition: 'all .15s', opacity: checkingUpdates ? 0.5 : 1 }}>
-            <Icon name="arrows-rotate" className={checkingUpdates ? 'spin' : ''} style={{ fontSize: 11 }} />
-            {checkingUpdates ? 'Checking...' : 'Refresh mod builds'}
-          </button>
-        )}
-        </div>
-      ) : (
-        <div className="no-scrollbar" style={{ display: 'flex', flexDirection: 'column', gap: 6, overflowY: 'auto', maxHeight: 120, transform: 'translateZ(0)' }}>
-          {updatable.map(mod => (
-            <div key={mod.id}
-              onClick={() => setExpanded(expanded === mod.id ? null : mod.id)}
-              style={{ cursor: 'pointer', padding: '9px 11px', borderRadius: 11, background: 'rgba(255,255,255,0.04)', border: '1px solid var(--glass-border)', transition: 'background .15s' }}
-              onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.07)'}
-              onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                {mod.icon_url
-                  ? <img src={mod.icon_url} alt="" style={{ width: 20, height: 20, borderRadius: 5, flexShrink: 0 }} />
-                  : <Icon name="cube" style={{ fontSize: 12, color: 'var(--text-faint)', flexShrink: 0 }} />}
-                <span style={{ flex: 1, fontSize: 13, fontWeight: 620, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{mod.title}</span>
-                <span style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--acc-1)', flexShrink: 0 }}>{mod.target_version_number}</span>
-                <Icon name={expanded === mod.id ? 'chevron-up' : 'chevron-down'} style={{ fontSize: 10, color: 'var(--text-faint)', flexShrink: 0 }} />
-              </div>
-              {expanded !== mod.id && (
-                <p style={{ margin: '5px 0 0 28px', fontSize: 12, color: 'var(--text-faint)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {cleanLine(firstLine(mod.target_changelog))}
-                </p>
-              )}
-              {expanded === mod.id && (
-                <pre style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--text-faint)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: 1.55, fontFamily: 'var(--font)', maxHeight: 140, overflowY: 'auto', padding: '8px 10px', background: 'rgba(0,0,0,0.2)', borderRadius: 8 }}>
-                  {mod.target_changelog.length > 800 ? mod.target_changelog.slice(0, 800) + '\n...' : mod.target_changelog}
-                </pre>
-              )}
+      <div className="no-scrollbar" style={{ display: 'flex', gap: 9, overflowX: 'auto', paddingBottom: 2 }}>
+        {recent.map(mod => (
+          <button key={mod.id} onClick={() => onOpenDrawer(mod)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0,
+              padding: '9px 13px', borderRadius: 13,
+              background: 'var(--glass-bg)', border: '1px solid var(--glass-border)',
+              cursor: 'pointer', transition: 'all .15s', textAlign: 'left',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'var(--glass-bg-2)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.22)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'var(--glass-bg)'; e.currentTarget.style.borderColor = 'var(--glass-border)'; }}>
+            {mod.icon_url
+              ? <img src={mod.icon_url} alt="" style={{ width: 28, height: 28, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />
+              : <div style={{ width: 28, height: 28, borderRadius: 8, background: 'rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Icon name="cube" style={{ fontSize: 11, color: 'var(--text-faint)' }} />
+                </div>}
+            <div>
+              <div style={{ fontSize: 12.5, fontWeight: 620, color: 'var(--text)', whiteSpace: 'nowrap', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis' }}>{mod.title}</div>
+              <div style={{ fontSize: 10.5, fontFamily: 'var(--mono)', color: 'var(--text-faint)', marginTop: 1 }}>{mod.installed_version || '—'}</div>
             </div>
-          ))}
+            <span style={{ fontSize: 10, color: 'var(--text-ghost)', whiteSpace: 'nowrap', paddingLeft: 2 }}>{timeAgo(mod.updated_at)}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// ---------- Changelog drawer ----------
+const ChangelogDrawer = ({ mod, onClose, onInstall, canInstall, installStatus }) => {
+  if (!mod) return null;
+  const state = (installStatus || {})[mod.id];
+  const hasUpdate = mod.target_version_number &&
+    mod.target_version_number !== 'None Found' &&
+    mod.target_version_number !== mod.installed_version;
+
+  const renderChangelog = (text) => {
+    if (!text) return <p style={{ margin: 0, color: 'var(--text-ghost)', fontStyle: 'italic', fontSize: 13 }}>No changelog available.</p>;
+    return text.split('\n').filter(l => l.trim()).map((line, i) => {
+      if (/^#{1,3}\s/.test(line)) return <div key={i} style={{ fontWeight: 700, fontSize: 13, color: 'var(--text)', marginTop: 12, marginBottom: 3 }}>{line.replace(/^#+\s*/, '')}</div>;
+      if (/^[-*]\s/.test(line)) return <div key={i} style={{ display: 'flex', gap: 7, fontSize: 12.5, color: 'var(--text-dim)', marginBottom: 3, paddingLeft: 4 }}><span style={{ color: 'var(--text-ghost)', flexShrink: 0 }}>·</span><span>{line.replace(/^[-*]\s/, '')}</span></div>;
+      return <div key={i} style={{ fontSize: 12.5, color: 'var(--text-dim)', marginBottom: 3 }}>{line}</div>;
+    });
+  };
+
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 80, background: 'rgba(2,4,10,0.4)', backdropFilter: 'blur(6px)', display: 'flex', justifyContent: 'flex-end' }}>
+      <div onClick={e => e.stopPropagation()}
+        style={{ width: '100%', maxWidth: 480, height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--glass-bg-strong)', backdropFilter: 'blur(40px) saturate(180%)', WebkitBackdropFilter: 'blur(40px) saturate(180%)', borderLeft: '1px solid var(--glass-border)', animation: 'drawerIn .28s cubic-bezier(.2,.9,.25,1)', overflowY: 'auto' }}>
+        <div style={{ padding: '22px 24px 16px', borderBottom: '1px solid var(--glass-border)', display: 'flex', alignItems: 'center', gap: 14 }}>
+          {mod.icon_url
+            ? <img src={mod.icon_url} alt="" style={{ width: 44, height: 44, borderRadius: 12, objectFit: 'cover', boxShadow: '0 4px 14px -4px rgba(0,0,0,0.5)', flexShrink: 0 }} />
+            : <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><Icon name="cube" style={{ fontSize: 18, color: 'var(--text-faint)' }} /></div>}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 17, fontWeight: 680, letterSpacing: '-0.015em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{mod.title}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 4, flexWrap: 'wrap' }}>
+              <span style={{ fontFamily: 'var(--mono)', fontSize: 11.5, color: 'var(--text-faint)' }}>{mod.installed_version || 'Unknown'}</span>
+              {hasUpdate && <>
+                <Icon name="arrow-right" style={{ fontSize: 9, color: 'var(--text-ghost)' }} />
+                <span style={{ fontFamily: 'var(--mono)', fontSize: 11.5, color: 'var(--acc-1)', fontWeight: 700 }}>{mod.target_version_number}</span>
+                <span style={{ fontSize: 10, padding: '1px 7px', borderRadius: 99, background: 'color-mix(in oklab, var(--acc-1) 16%, transparent)', color: 'var(--acc-1)', border: '1px solid color-mix(in oklab, var(--acc-1) 32%, transparent)' }}>update available</span>
+              </>}
+            </div>
+          </div>
+          <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid var(--glass-border)', borderRadius: 10, width: 34, height: 34, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-faint)', flexShrink: 0 }}>
+            <Icon name="xmark" style={{ fontSize: 13 }} />
+          </button>
         </div>
-      )}
-    </Glass>
+        <div className="no-scrollbar" style={{ flex: 1, padding: '18px 24px', overflowY: 'auto' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--text-ghost)', marginBottom: 12 }}>Changelog</div>
+          {renderChangelog(mod.target_changelog)}
+        </div>
+        <div style={{ padding: '14px 24px 20px', borderTop: '1px solid var(--glass-border)', display: 'flex', gap: 9, flexWrap: 'wrap' }}>
+          {canInstall && hasUpdate && (
+            <button onClick={() => { onInstall(mod, mod.target_version_number); onClose(); }}
+              disabled={state === 'installing'}
+              style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 16px', borderRadius: 11, background: 'var(--acc-1)', color: '#000', border: 0, fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700, cursor: state === 'installing' ? 'not-allowed' : 'pointer', opacity: state === 'installing' ? 0.6 : 1, transition: 'all .15s' }}>
+              <Icon name={state === 'installing' ? 'arrows-rotate' : 'cloud-arrow-down'} className={state === 'installing' ? 'spin' : ''} style={{ fontSize: 12 }} />
+              {state === 'installing' ? 'Installing…' : `Install ${mod.target_version_number}`}
+            </button>
+          )}
+          <a href={mod.project_url || '#'} target="_blank" rel="noreferrer"
+            style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 14px', borderRadius: 11, background: 'rgba(255,255,255,0.07)', color: 'var(--text-dim)', border: '1px solid var(--glass-border)', fontSize: 13, fontWeight: 580, textDecoration: 'none', transition: 'all .15s' }}>
+            <Icon name="arrow-up-right-from-square" style={{ fontSize: 11 }} /> Modrinth
+          </a>
+          <button onClick={onClose}
+            style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 7, padding: '9px 14px', borderRadius: 11, background: 'transparent', color: 'var(--text-faint)', border: '1px solid var(--glass-border)', fontSize: 13, fontFamily: 'var(--font)', cursor: 'pointer', transition: 'all .15s' }}>
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
   );
 };
 
@@ -1914,6 +1963,7 @@ const DashboardView = ({ ctx }) => {
   const isAdmin = accessLevel === 'admin';
   const actionsRef = useRef(null);
   const searchRef = useRef(null);
+  const [changelogDrawerMod, setChangelogDrawerMod] = useState(null);
   useEffect(() => {
     if (!showActionsMenu) return;
     const onClick = (e) => { if (actionsRef.current && !actionsRef.current.contains(e.target)) setShowActionsMenu(false); };
@@ -2070,74 +2120,83 @@ const DashboardView = ({ ctx }) => {
 
       <div style={{ maxWidth: 1440, margin: '0 auto', padding: '8px 28px 0', display: 'flex', flexDirection: 'column', gap: 22 }}>
 
-        {/* ===== Hero - bento layout ===== */}
-        <div className="fade-in hero-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 200px', gap: 16, alignItems: 'stretch' }}>
+        {/* ===== Hero ===== */}
+        <div className="fade-in" style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 16, alignItems: 'stretch' }}>
 
-          {/* Panel 1: stats + IP + codes */}
-          <Glass style={{ padding: 22, borderRadius: 'var(--r-xl)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 18, flexWrap: 'wrap' }}>
-              <HeroStat icon="cube" label="Server mods" value={`${enabledCount} / ${mods.length}`} tone="var(--acc-1)" />
-              <HeroStat icon="heart" label="Wishlist" value={wishlist.length} tone="var(--violet)" />
-              <div style={{ flex: 1 }} />
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          {/* Left: server identity */}
+          <div style={{ overflow: 'hidden', borderRadius: 'var(--r-xl)' }}>
+            <Glass style={{ padding: 28, borderRadius: 'var(--r-xl)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 20, height: '100%' }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14 }}>
+                  <div style={{ fontFamily: 'var(--font-display)', fontSize: 46, fontWeight: 400, lineHeight: 1.0, letterSpacing: '-0.025em', color: 'var(--text)', flex: 1 }}>
+                    {serverName}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexShrink: 0, paddingTop: 8 }}>
+                    <span className={`status-dot ${serverStatus?.online ? 'status-on' : 'status-off'}`} style={{ width: 9, height: 9 }} />
+                    <span style={{ fontSize: 12.5, fontWeight: 620, color: serverStatus?.online ? 'var(--good)' : 'var(--text-faint)' }}>
+                      {serverStatus ? (serverStatus.online ? 'Online' : 'Offline') : '—'}
+                    </span>
+                    {serverStatus?.online && serverStatus.players && (
+                      <span style={{ fontSize: 12, color: 'var(--text-ghost)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <Icon name="users" style={{ fontSize: 9 }} />{serverStatus.players.online}/{serverStatus.players.max}
+                      </span>
+                    )}
+                    <span style={{ fontFamily: 'var(--mono)', fontSize: 12, fontWeight: 700, color: 'var(--acc-1)' }}>{serverVersion}</span>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 20, marginTop: 20 }}>
+                  <HeroStat icon="cube" label="Server mods" value={`${enabledCount} / ${mods.length}`} tone="var(--acc-1)" />
+                  <HeroStat icon="heart" label="Wishlist" value={wishlist.length} tone="var(--violet)" />
+                </div>
+              </div>
+              <div style={{ borderTop: '1px solid var(--glass-border)', paddingTop: 16, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                 {serverIP ? <CopyChip value={serverIP} label="IP" icon="copy" /> : null}
                 {isAdmin && panelUrl && <a href={panelUrl} target="_blank" rel="noreferrer" className="btn btn-glass btn-sm"><Icon name="gauge-high" style={{ fontSize: 12 }} /> Console</a>}
+                {isAdmin ? (
+                  <>
+                    <CopyChip value={sessionCodes.admin} label="Admin" mono />
+                    <CopyChip value={sessionCodes.user} label="Member" mono />
+                    <button onClick={() => { const url = `${window.location.origin}${window.location.pathname}?code=${sessionCodes.user}`; if (copyToClipboard(url)) addToast('Invite link copied'); }}
+                      className="btn btn-glass btn-sm"><Icon name="link" style={{ fontSize: 11 }} /> Copy invite</button>
+                  </>
+                ) : sessionCodes.user ? (
+                  <>
+                    <CopyChip value={sessionCodes.user} label="Code" mono />
+                    <button onClick={() => { const url = `${window.location.origin}${window.location.pathname}?code=${sessionCodes.user}`; if (copyToClipboard(url)) addToast('Invite link copied'); }}
+                      className="btn btn-glass btn-sm"><Icon name="link" style={{ fontSize: 11 }} /> Copy invite</button>
+                  </>
+                ) : null}
               </div>
-            </div>
-
-            {/* Access codes */}
-            {isAdmin ? (
-              <div style={{ paddingTop: 14, borderTop: '1px solid var(--glass-border)', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--text-faint)', marginRight: 2 }}>
-                  <Icon name="key" style={{ fontSize: 9, marginRight: 5 }} />Access
-                </span>
-                <CopyChip value={sessionCodes.admin} label="Admin" mono />
-                <CopyChip value={sessionCodes.user} label="Member" mono />
-                <button onClick={() => { const url = `${window.location.origin}${window.location.pathname}?code=${sessionCodes.user}`; if (copyToClipboard(url)) addToast('Invite link copied'); }}
-                  className="btn btn-glass btn-sm"><Icon name="link" style={{ fontSize: 11 }} /> Copy invite</button>
-              </div>
-            ) : sessionCodes.user ? (
-              <div style={{ paddingTop: 14, borderTop: '1px solid var(--glass-border)', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--text-faint)', marginRight: 2 }}>
-                  <Icon name="link" style={{ fontSize: 9, marginRight: 5 }} />Invite
-                </span>
-                <CopyChip value={sessionCodes.user} label="Code" mono />
-                <button onClick={() => { const url = `${window.location.origin}${window.location.pathname}?code=${sessionCodes.user}`; if (copyToClipboard(url)) addToast('Invite link copied'); }}
-                  className="btn btn-glass btn-sm"><Icon name="link" style={{ fontSize: 11 }} /> Copy invite</button>
-              </div>
-            ) : null}
-          </Glass>
-
-          {/* Panel 2: Notes + Changelog stacked */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <AdminNoteCard heroNote={heroNote} isAdmin={isAdmin} onSave={handleSaveHeroNote} />
-            <ChangelogCard mods={mods} targetVersion={targetVersion} isAdmin={isAdmin} checkAllUpdates={() => checkAllUpdates(mods, 'active')} checkingUpdates={checkingUpdates} />
+            </Glass>
           </div>
 
-          {/* Panel 3: Server status */}
-          <div style={{ overflow: 'hidden', borderRadius: 'var(--r-xl)' }}>
-          <Glass style={{ padding: 22, borderRadius: 'var(--r-xl)', display: 'flex', flexDirection: 'column', gap: 14, justifyContent: 'center', height: '100%' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-              <span className={`status-dot ${serverStatus?.online ? 'status-on' : 'status-off'}`} style={{ width: 11, height: 11 }} />
-              <span style={{ fontSize: 16, fontWeight: 680, color: serverStatus?.online ? 'var(--good)' : 'var(--text-faint)', letterSpacing: '-0.01em' }}>
-                {serverStatus ? (serverStatus.online ? 'Online' : 'Offline') : 'Unknown'}
-              </span>
+          {/* Right: Notes + Status pill stacked */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ overflow: 'hidden', borderRadius: 'var(--r-xl)', flex: 1 }}>
+              <AdminNoteCard heroNote={heroNote} isAdmin={isAdmin} onSave={handleSaveHeroNote} />
             </div>
-            {serverStatus?.online && serverStatus.players && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Icon name="users" style={{ fontSize: 13, color: 'var(--text-faint)' }} />
-                <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-dim)' }}>{serverStatus.players.online}</span>
-                <span style={{ fontSize: 13, color: 'var(--text-ghost)' }}>/ {serverStatus.players.max}</span>
-              </div>
-            )}
-            <div style={{ borderTop: '1px solid var(--glass-border)', paddingTop: 12 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--text-ghost)', marginBottom: 4 }}>Version</div>
-              <span style={{ fontFamily: 'var(--mono)', fontSize: 14, fontWeight: 700, color: 'var(--acc-1)' }}>{serverVersion}</span>
+            <div style={{ overflow: 'hidden', borderRadius: 'var(--r-xl)' }}>
+              <Glass style={{ padding: '14px 18px', borderRadius: 'var(--r-xl)', display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span className={`status-dot ${serverStatus?.online ? 'status-on' : 'status-off'}`} style={{ width: 10, height: 10, flexShrink: 0 }} />
+                <span style={{ fontSize: 14, fontWeight: 660, color: serverStatus?.online ? 'var(--good)' : 'var(--text-faint)', letterSpacing: '-0.01em' }}>
+                  {serverStatus ? (serverStatus.online ? 'Online' : 'Offline') : 'Unknown'}
+                </span>
+                {serverStatus?.online && serverStatus.players && (
+                  <span style={{ fontSize: 13, color: 'var(--text-dim)', display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <Icon name="users" style={{ fontSize: 10, color: 'var(--text-faint)' }} />
+                    {serverStatus.players.online}<span style={{ color: 'var(--text-ghost)' }}>/{serverStatus.players.max}</span>
+                  </span>
+                )}
+                <div style={{ flex: 1 }} />
+                <span style={{ fontFamily: 'var(--mono)', fontSize: 13, fontWeight: 700, color: 'var(--acc-1)' }}>{serverVersion}</span>
+              </Glass>
             </div>
-          </Glass>
           </div>
 
         </div>
+
+        {/* ===== Recent Activity ===== */}
+        <RecentActivityStrip mods={mods} onOpenDrawer={setChangelogDrawerMod} />
 
         {/* ===== Toolbar ===== */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', position: 'relative', zIndex: 10 }}>
@@ -2377,6 +2436,16 @@ const DashboardView = ({ ctx }) => {
         isSyncMismatch={isSyncMismatch} fabricLoaderVersion={fabricLoaderVersion} fabricApiVersion={fabricApiVersion}
         isAdmin={isAdmin} checkAllUpdates={() => checkAllUpdates(mods, 'active')} checkingUpdates={checkingUpdates}
         saveVersions={saveVersions} setShowScriptModal={setShowScriptModal} />
+
+      {changelogDrawerMod && (
+        <ChangelogDrawer
+          mod={changelogDrawerMod}
+          onClose={() => setChangelogDrawerMod(null)}
+          onInstall={handleInstallMod}
+          canInstall={!!(vmApiUrl && isAdmin)}
+          installStatus={installStatus}
+        />
+      )}
 
       <ToastStack toasts={toasts} />
 	 </div>
@@ -3184,21 +3253,4 @@ function ModManager() {
     vmApiUrl, vmApiKey, installStatus, vmDiskFiles, showUpgradePanel, setShowUpgradePanel, showActionsMenu, setShowActionsMenu,
     showVmSyncModal, setShowVmSyncModal, vmSyncData, vmSyncLoading,
     removeConfirmTarget, setRemoveConfirmTarget,
-    installConfirmTarget, setInstallConfirmTarget,
-    addModConfirmTarget, setAddModConfirmTarget,
-    sortBy, setSortBy, filter, setFilter, toasts, addToast,
-    newServerName, setNewServerName, newServerIP, setNewServerIP, fileInputRef, importStatus,
-    heroNote, handleSaveHeroNote,
-    attemptJoin, handleCreateServer, enterDemo, handleLogout, saveVersions, handleAddCustomMod, handleAddMod,
-    handleRemoveMod, handleRemoveConfirmed, handleApproveWishlist, handleVote, handleInstallMod, handleRemoveFromVM, handleVmSync, handleSyncVersionsFromDisk, handleSyncTagsFromModrinth, handleBatchReinstall,
-    handleUpdateNote, handleToggleMod, handleVersionChange, handleSaveSettings, handleExportBackup, triggerImport, handleImportBackup, checkAllUpdates,
-    activeDependencyIds, activeEditingMod, isSyncMismatch,
-    dependencyOf
-  };
-
-  return renderApp(ctx);
-}
-
-
-ReactDOM.createRoot(document.getElementById('root')).render(<ModManager />);
-</script>
+    installConfir
