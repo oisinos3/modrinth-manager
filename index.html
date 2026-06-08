@@ -1832,7 +1832,7 @@ const ChangelogCard = ({ mods, targetVersion, isAdmin, checkAllUpdates, checking
         )}
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, overflowY: 'auto', maxHeight: 120 }}>
+        <div className="no-scrollbar" style={{ display: 'flex', flexDirection: 'column', gap: 6, overflowY: 'auto', maxHeight: 120, transform: 'translateZ(0)' }}>
           {updatable.map(mod => (
             <div key={mod.id}
               onClick={() => setExpanded(expanded === mod.id ? null : mod.id)}
