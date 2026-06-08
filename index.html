@@ -2105,7 +2105,8 @@ const DashboardView = ({ ctx }) => {
           </div>
 
           {/* Panel 3: Server status */}
-          <Glass style={{ padding: 22, borderRadius: 'var(--r-xl)', display: 'flex', flexDirection: 'column', gap: 14, justifyContent: 'center' }}>
+          <div style={{ overflow: 'hidden', borderRadius: 'var(--r-xl)' }}>
+          <Glass style={{ padding: 22, borderRadius: 'var(--r-xl)', display: 'flex', flexDirection: 'column', gap: 14, justifyContent: 'center', height: '100%' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
               <span className={`status-dot ${serverStatus?.online ? 'status-on' : 'status-off'}`} style={{ width: 11, height: 11 }} />
               <span style={{ fontSize: 16, fontWeight: 680, color: serverStatus?.online ? 'var(--good)' : 'var(--text-faint)', letterSpacing: '-0.01em' }}>
@@ -2124,6 +2125,7 @@ const DashboardView = ({ ctx }) => {
               <span style={{ fontFamily: 'var(--mono)', fontSize: 14, fontWeight: 700, color: 'var(--acc-1)' }}>{serverVersion}</span>
             </div>
           </Glass>
+          </div>
 
         </div>
 
