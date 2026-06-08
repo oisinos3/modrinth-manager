@@ -2858,7 +2858,7 @@ function ModManager() {
   };
   const VM_API_KEY = vmApiKey;
 
-  const handleInstallMod = async (mod, versionNumber) => {
+  const handleInstallMod = async (mod, versionNumber, silent = false) => {
     if (!vmApiUrl) return;
     if (demo) { demoInstall(mod, versionNumber); return; }
     setInstallStatus(p => ({ ...p, [mod.id]: 'installing' }));
@@ -2873,7 +2873,7 @@ function ModManager() {
         if (!m) throw new Error(`Version ${versionNumber} not found`);
         const pf = m.files.find(f => f.primary) || m.files[0];
         if (!pf) throw new Error('No download file found');
-        downloadUrl = pf.url; filename = `${mod.slug}-${versionNumber}.jar`;
+        downloadUrl = pf.url; filename = pf.filename;
       }
       const res = await fetch(`${vmBase()}/install`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': VM_API_KEY }, body: JSON.stringify({ url: downloadUrl, filename, slug: mod.slug }) });
       if (!res.ok) throw new Error(`VM responded ${res.status}`);
@@ -2886,7 +2886,7 @@ function ModManager() {
         : m);
       await saveToServer(updatedMods, null);
       setVmDiskFiles(p => p ? [...p.filter(f => { const b = f.replace(/\.disabled$/, ''); return !b.startsWith(mod.slug + '-') && b !== mod.slug + '.jar'; }), actualFilename] : [actualFilename]);
-      addToast(`${mod.title}${mod.isCustom ? '' : ' ' + versionNumber} installed to VM`);
+      if (!silent) addToast(`${mod.title}${mod.isCustom ? '' : ' ' + versionNumber} installed to VM`);
       setInstallStatus(p => ({ ...p, [mod.id]: 'done' }));
       setTimeout(() => setInstallStatus(p => { const n = { ...p }; delete n[mod.id]; return n; }), 3000);
     } catch (err) {
@@ -2897,7 +2897,7 @@ function ModManager() {
     }
   };
 
-  const handleRemoveFromVM = async (mod, selectedVersion) => {
+  const handleRemoveFromVM = async (mod, selectedVersion, silent = false) => {
     if (!vmApiUrl) return false;
     if (demo) { demoRemove(mod); return true; }
     const onDiskFile = mod.installedJarFile
@@ -2909,7 +2909,7 @@ function ModManager() {
       const res = await fetch(`${vmBase()}/remove/${encodeURIComponent(filename)}`, { method: 'DELETE', headers: { 'x-api-key': VM_API_KEY } });
       if (!res.ok) throw new Error(`VM responded ${res.status}${res.status === 401 ? ' (wrong API key?)' : ''}`);
       setVmDiskFiles(p => p ? p.filter(f => f !== filename) : null);
-      addToast(`${mod.title} removed from VM`, 'info');
+      if (!silent) addToast(`${mod.title} removed from VM`, 'info');
       setInstallStatus(p => { const n = { ...p }; delete n[mod.id]; return n; });
       return true;
     } catch (err) {
@@ -2973,16 +2973,20 @@ function ModManager() {
     if (!vmApiUrl) { addToast('No VM API configured', 'error'); return; }
     const targets = mods.filter(m =>
       !m.isCustom &&
-      !m.installedJarFile &&
-      (m.server_candidates || []).length >= 1 &&
-      vmDiskFiles && vmDiskFiles.find(f => f.startsWith(m.slug + '-') || f === m.slug + '.jar')
+      m.installed_version && m.installed_version !== 'None Found' &&
+      vmDiskFiles && (
+        vmDiskFiles.find(f => f.replace(/\.disabled$/, '') === m.installedJarFile) ||
+        vmDiskFiles.find(f => f.startsWith(m.slug + '-') || f === m.slug + '.jar')
+      )
     );
-    if (targets.length === 0) { addToast('All mods already have filenames recorded', 'info'); return; }
-    addToast(`Fixing filenames for ${targets.length} mod${targets.length === 1 ? '' : 's'}...`, 'info');
+    if (targets.length === 0) { addToast('No installed mods found on disk', 'info'); return; }
+    addToast(`Reinstalling ${targets.length} mod${targets.length === 1 ? '' : 's'} with correct filenames...`, 'info');
     let done = 0, failed = 0;
     for (const mod of targets) {
       try {
-        await handleInstallMod(mod, mod.server_candidates[0]);
+        await handleRemoveFromVM(mod, null, true);
+        await new Promise(r => setTimeout(r, 400));
+        await handleInstallMod(mod, mod.installed_version, true);
         done++;
       } catch (e) { failed++; }
       await new Promise(r => setTimeout(r, 600));
