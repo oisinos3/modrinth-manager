@@ -1802,7 +1802,7 @@ const AdminNoteCard = ({ heroNote, isAdmin, onSave }) => {
 };
 
 // ---------- Recent Activity strip ----------
-const RecentActivityStrip = ({ mods, onOpenDrawer }) => {
+const RecentActivityStrip = ({ mods }) => {
   const recent = useMemo(() =>
     [...mods]
       .filter(m => m.updated_at)
@@ -1831,12 +1831,12 @@ const RecentActivityStrip = ({ mods, onOpenDrawer }) => {
       </div>
       <div className="no-scrollbar" style={{ display: 'flex', gap: 9, overflowX: 'auto', paddingBottom: 2 }}>
         {recent.map(mod => (
-          <button key={mod.id} onClick={() => onOpenDrawer(mod)}
+          <a key={mod.id} href={mod.project_url || `https://modrinth.com/mod/${mod.slug}`} target="_blank" rel="noreferrer"
             style={{
               display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0,
               padding: '9px 13px', borderRadius: 13,
               background: 'var(--glass-bg)', border: '1px solid var(--glass-border)',
-              cursor: 'pointer', transition: 'all .15s', textAlign: 'left',
+              cursor: 'pointer', transition: 'all .15s', textDecoration: 'none',
             }}
             onMouseEnter={e => { e.currentTarget.style.background = 'var(--glass-bg-2)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.22)'; }}
             onMouseLeave={e => { e.currentTarget.style.background = 'var(--glass-bg)'; e.currentTarget.style.borderColor = 'var(--glass-border)'; }}>
@@ -1850,7 +1850,7 @@ const RecentActivityStrip = ({ mods, onOpenDrawer }) => {
               <div style={{ fontSize: 10.5, fontFamily: 'var(--mono)', color: 'var(--text-faint)', marginTop: 1 }}>{mod.installed_version || '—'}</div>
             </div>
             <span style={{ fontSize: 10, color: 'var(--text-ghost)', whiteSpace: 'nowrap', paddingLeft: 2 }}>{timeAgo(mod.updated_at)}</span>
-          </button>
+          </a>
         ))}
       </div>
     </div>
@@ -1963,7 +1963,6 @@ const DashboardView = ({ ctx }) => {
   const isAdmin = accessLevel === 'admin';
   const actionsRef = useRef(null);
   const searchRef = useRef(null);
-  const [changelogDrawerMod, setChangelogDrawerMod] = useState(null);
   useEffect(() => {
     if (!showActionsMenu) return;
     const onClick = (e) => { if (actionsRef.current && !actionsRef.current.contains(e.target)) setShowActionsMenu(false); };
@@ -1990,7 +1989,7 @@ const DashboardView = ({ ctx }) => {
     if (filter === 'custom') list = list.filter(m => m.isCustom);
     if (filter === 'missing') list = list.filter(m => !m.isCustom && m.target_version_number === 'None Found');
     if (filter === 'not-installed') list = list.filter(m => vmDiskFiles !== null && !vmDiskFiles.some(f => f.startsWith(m.slug + '-') || f === m.slug + '.jar'));
-    if (filter === 'server-only') list = list.filter(m => m.server_side === 'required' && m.client_side === 'unsupported');
+
     if (filter === 'library') list = list.filter(m => isLibraryMod(m));
     if (filterQuery.trim()) {
       const q = filterQuery.toLowerCase();
@@ -2170,33 +2169,15 @@ const DashboardView = ({ ctx }) => {
             </Glass>
           </div>
 
-          {/* Right: Notes + Status pill stacked */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div style={{ overflow: 'hidden', borderRadius: 'var(--r-xl)', flex: 1 }}>
-              <AdminNoteCard heroNote={heroNote} isAdmin={isAdmin} onSave={handleSaveHeroNote} />
-            </div>
-            <div style={{ overflow: 'hidden', borderRadius: 'var(--r-xl)' }}>
-              <Glass style={{ padding: '14px 18px', borderRadius: 'var(--r-xl)', display: 'flex', alignItems: 'center', gap: 12 }}>
-                <span className={`status-dot ${serverStatus?.online ? 'status-on' : 'status-off'}`} style={{ width: 10, height: 10, flexShrink: 0 }} />
-                <span style={{ fontSize: 14, fontWeight: 660, color: serverStatus?.online ? 'var(--good)' : 'var(--text-faint)', letterSpacing: '-0.01em' }}>
-                  {serverStatus ? (serverStatus.online ? 'Online' : 'Offline') : 'Unknown'}
-                </span>
-                {serverStatus?.online && serverStatus.players && (
-                  <span style={{ fontSize: 13, color: 'var(--text-dim)', display: 'flex', alignItems: 'center', gap: 5 }}>
-                    <Icon name="users" style={{ fontSize: 10, color: 'var(--text-faint)' }} />
-                    {serverStatus.players.online}<span style={{ color: 'var(--text-ghost)' }}>/{serverStatus.players.max}</span>
-                  </span>
-                )}
-                <div style={{ flex: 1 }} />
-                <span style={{ fontFamily: 'var(--mono)', fontSize: 13, fontWeight: 700, color: 'var(--acc-1)' }}>{serverVersion}</span>
-              </Glass>
-            </div>
+          {/* Right: Notes */}
+          <div style={{ overflow: 'hidden', borderRadius: 'var(--r-xl)' }}>
+            <AdminNoteCard heroNote={heroNote} isAdmin={isAdmin} onSave={handleSaveHeroNote} />
           </div>
 
         </div>
 
         {/* ===== Recent Activity ===== */}
-        <RecentActivityStrip mods={mods} onOpenDrawer={setChangelogDrawerMod} />
+        <RecentActivityStrip mods={mods} />
 
         {/* ===== Toolbar ===== */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', position: 'relative', zIndex: 10 }}>
@@ -2372,8 +2353,7 @@ const DashboardView = ({ ctx }) => {
             { value: 'all', label: 'All' },
             { value: 'custom', label: 'Custom', color: 'var(--violet)' },
             activeTab === 'active' && vmDiskFiles !== null && { value: 'not-installed', label: 'Not on Server', color: 'var(--warn)' },
-            activeTab === 'active' && { value: 'server-only', label: 'Server Only', color: 'var(--good)' },
-            activeTab === 'active' && { value: 'client-only', label: 'Client Only', color: 'var(--info)' },
+
             activeTab === 'active' && libraryCount > 0 && { value: 'library', label: `Libraries (${libraryCount})`, color: 'var(--text-faint)' },
           ].filter(Boolean).map(f => (
             <button key={f.value} onClick={() => setFilter(f.value)}
@@ -2437,15 +2417,6 @@ const DashboardView = ({ ctx }) => {
         isAdmin={isAdmin} checkAllUpdates={() => checkAllUpdates(mods, 'active')} checkingUpdates={checkingUpdates}
         saveVersions={saveVersions} setShowScriptModal={setShowScriptModal} />
 
-      {changelogDrawerMod && (
-        <ChangelogDrawer
-          mod={changelogDrawerMod}
-          onClose={() => setChangelogDrawerMod(null)}
-          onInstall={handleInstallMod}
-          canInstall={!!(vmApiUrl && isAdmin)}
-          installStatus={installStatus}
-        />
-      )}
 
       <ToastStack toasts={toasts} />
 	 </div>
