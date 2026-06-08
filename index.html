@@ -3253,4 +3253,21 @@ function ModManager() {
     vmApiUrl, vmApiKey, installStatus, vmDiskFiles, showUpgradePanel, setShowUpgradePanel, showActionsMenu, setShowActionsMenu,
     showVmSyncModal, setShowVmSyncModal, vmSyncData, vmSyncLoading,
     removeConfirmTarget, setRemoveConfirmTarget,
-    installConfir
+    installConfirmTarget, setInstallConfirmTarget,
+    addModConfirmTarget, setAddModConfirmTarget,
+    sortBy, setSortBy, filter, setFilter, toasts, addToast,
+    newServerName, setNewServerName, newServerIP, setNewServerIP, fileInputRef, importStatus,
+    heroNote, handleSaveHeroNote,
+    attemptJoin, handleCreateServer, enterDemo, handleLogout, saveVersions, handleAddCustomMod, handleAddMod,
+    handleRemoveMod, handleRemoveConfirmed, handleApproveWishlist, handleVote, handleInstallMod, handleRemoveFromVM, handleVmSync, handleSyncVersionsFromDisk, handleSyncTagsFromModrinth, handleBatchReinstall,
+    handleUpdateNote, handleToggleMod, handleVersionChange, handleSaveSettings, handleExportBackup, triggerImport, handleImportBackup, checkAllUpdates,
+    activeDependencyIds, activeEditingMod, isSyncMismatch,
+    dependencyOf
+  };
+
+  return renderApp(ctx);
+}
+
+
+ReactDOM.createRoot(document.getElementById('root')).render(<ModManager />);
+</script>
