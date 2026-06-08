@@ -1828,8 +1828,9 @@ const RecentActivityStrip = ({ mods }) => {
         </span>
         <div style={{ flex: 1, height: 1, background: 'linear-gradient(90deg, var(--glass-border), transparent)' }} />
       </div>
-      <div style={{ position: 'relative' }}>
-      <div className="no-scrollbar" style={{ display: 'flex', gap: 9, overflowX: 'auto', paddingBottom: 2 }}>
+      <div className="no-scrollbar" style={{ display: 'flex', gap: 9, overflowX: 'auto', paddingBottom: 2,
+        WebkitMaskImage: 'linear-gradient(to right, black 0%, black 82%, transparent 100%)',
+        maskImage: 'linear-gradient(to right, black 0%, black 82%, transparent 100%)' }}>
         {recent.map(mod => (
           <a key={mod.id} href={mod.project_url || `https://modrinth.com/mod/${mod.slug}`} target="_blank" rel="noreferrer"
             style={{
@@ -1852,10 +1853,6 @@ const RecentActivityStrip = ({ mods }) => {
             <span style={{ fontSize: 10, color: 'var(--text-ghost)', whiteSpace: 'nowrap', paddingLeft: 2 }}>{timeAgo(mod.updated_at)}</span>
           </a>
         ))}
-      </div>
-      {/* Right fade */}
-      <div style={{ position: 'absolute', top: 0, right: 0, bottom: 2, width: 120, pointerEvents: 'none',
-        background: 'linear-gradient(to right, transparent, var(--bg) 85%)' }} />
       </div>
     </div>
   );
