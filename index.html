@@ -1432,8 +1432,13 @@ const LoginView = ({ ctx }) => {
           <form onSubmit={(e) => { e.preventDefault(); attemptJoin(joinCode); }} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div>
               <label className="label" style={{ marginBottom: 8, display: 'block' }}>Access Code</label>
-              <input className="field field-mono" value={joinCode} onChange={e => setJoinCode(e.target.value)}
-                placeholder="ADM-X92Z" autoCapitalize="characters"
+              <input className="field field-mono" value={joinCode}
+                onChange={e => {
+                  let v = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+                  if (v.length > 3) v = v.slice(0, 3) + '-' + v.slice(3, 7);
+                  setJoinCode(v);
+                }}
+                placeholder="ADM-X92Z" autoCapitalize="characters" maxLength={8}
                 style={{ textAlign: 'center', fontSize: 19, letterSpacing: '0.22em', textTransform: 'uppercase', padding: '14px' }} />
             </div>
             {error && <p style={{ margin: 0, fontSize: 13, color: 'var(--bad)', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}><Icon name="circle-exclamation" style={{ fontSize: 12 }} /> {error}</p>}
@@ -2064,17 +2069,32 @@ const DashboardView = ({ ctx }) => {
     <div style={{ minHeight: '100vh', paddingBottom: 60 }}>
       <div style={{ maxWidth: 1440, margin: '0 auto', padding: '36px 28px 0', display: 'flex', flexDirection: 'column', gap: 22 }}>
         {/* ===== Hero ===== */}
-        <div className="fade-in" style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 32, alignItems: 'flex-start' }}>
+        <div className="fade-in" style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 32, alignItems: 'stretch' }}>
 
-          {/* Left: bare serif name */}
-          <div style={{ display: 'flex', alignItems: 'center', minHeight: '100%' }}>
+          {/* Left: name top, status pinned to bottom */}
+          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
             <div style={{ fontFamily: 'var(--font-display)', fontSize: 116, fontWeight: 400, lineHeight: 0.95, letterSpacing: '-0.03em', color: 'var(--text)' }}>
               {serverName}
             </div>
+            {/* Status line — pinned to bottom of left column, aligned with card bottom */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '2px 4px' }}>
+              <span className={`status-dot ${serverStatus?.online ? 'status-on' : 'status-off'}`} style={{ width: 8, height: 8, flexShrink: 0 }} />
+              <span style={{ fontSize: 13, fontWeight: 600, color: serverStatus?.online ? 'var(--good)' : 'var(--text-faint)' }}>
+                {serverStatus ? (serverStatus.online ? 'Online' : 'Offline') : '—'}
+              </span>
+              {serverStatus?.online && serverStatus.players && (
+                <>
+                  <span style={{ color: 'var(--glass-border)' }}>·</span>
+                  <Icon name="users" style={{ fontSize: 10, color: 'var(--text-ghost)' }} />
+                  <span style={{ fontSize: 13, color: 'var(--text-ghost)' }}>{serverStatus.players.online}/{serverStatus.players.max}</span>
+                </>
+              )}
+              <span style={{ color: 'var(--glass-border)' }}>·</span>
+              <span style={{ fontFamily: 'var(--mono)', fontSize: 12, fontWeight: 700, color: 'var(--acc-1)' }}>{serverVersion}</span>
+            </div>
           </div>
 
-          {/* Right: glass card + status stacked */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {/* Right: glass card */}
           <div style={{ overflow: 'hidden', borderRadius: 'var(--r-xl)' }}>
             <Glass style={{ padding: 22, borderRadius: 'var(--r-xl)', display: 'flex', flexDirection: 'column', gap: 16 }}>
 
@@ -2085,7 +2105,7 @@ const DashboardView = ({ ctx }) => {
                   : <Badge color="blue" icon="user">Member</Badge>}
                 {demo && <Badge color="yellow" icon="flask">Demo</Badge>}
                 <div style={{ flex: 1 }} />
-                <IconBtn name="gear" title="Settings" onClick={() => setShowSettingsModal(true)} />
+                {isAdmin && <IconBtn name="gear" title="Settings" onClick={() => setShowSettingsModal(true)} />}
                 <IconBtn name="arrow-right-from-bracket" title="Leave" onClick={handleLogout} />
               </div>
 
@@ -2117,24 +2137,6 @@ const DashboardView = ({ ctx }) => {
 
             </Glass>
           </div>
-
-            {/* Status line — below card, above Recent Activity */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '2px 4px' }}>
-              <span className={`status-dot ${serverStatus?.online ? 'status-on' : 'status-off'}`} style={{ width: 8, height: 8, flexShrink: 0 }} />
-              <span style={{ fontSize: 13, fontWeight: 600, color: serverStatus?.online ? 'var(--good)' : 'var(--text-faint)' }}>
-                {serverStatus ? (serverStatus.online ? 'Online' : 'Offline') : '—'}
-              </span>
-              {serverStatus?.online && serverStatus.players && (
-                <>
-                  <span style={{ color: 'var(--glass-border)' }}>·</span>
-                  <Icon name="users" style={{ fontSize: 10, color: 'var(--text-ghost)' }} />
-                  <span style={{ fontSize: 13, color: 'var(--text-ghost)' }}>{serverStatus.players.online}/{serverStatus.players.max}</span>
-                </>
-              )}
-              <span style={{ color: 'var(--glass-border)' }}>·</span>
-              <span style={{ fontFamily: 'var(--mono)', fontSize: 12, fontWeight: 700, color: 'var(--acc-1)' }}>{serverVersion}</span>
-            </div>
-          </div>{/* end right column */}
 
         </div>
 
