@@ -1127,6 +1127,13 @@ const CustomModModal = ({ isOpen, onClose, onAdd, storage }) => {
   const [url, setUrl] = useState('');
   const [file, setFile] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const uploadTaskRef = React.useRef(null);
+
+  const handleClose = () => {
+    if (uploadTaskRef.current) { uploadTaskRef.current.cancel(); uploadTaskRef.current = null; }
+    setName(''); setDesc(''); setUrl(''); setFile(null); setUploading(false);
+    onClose();
+  };
   if (!isOpen) return null;
 
   const handleSubmit = async (e) => {
@@ -1137,7 +1144,9 @@ const CustomModModal = ({ isOpen, onClose, onAdd, storage }) => {
       setUploading(true);
       try {
         const ref = storage.ref().child(`uploads/${file.name.replace(/[^a-zA-Z0-9.\-_]/g, '')}`);
-        await ref.put(file);
+        uploadTaskRef.current = ref.put(file);
+        await uploadTaskRef.current;
+        uploadTaskRef.current = null;
         finalUrl = await ref.getDownloadURL();
       } catch (err) { alert("Upload failed! Check console or Firebase Rules."); setUploading(false); return; }
       setUploading(false);
@@ -1147,9 +1156,9 @@ const CustomModModal = ({ isOpen, onClose, onAdd, storage }) => {
   };
 
   return (
-    <div className="scrim" onClick={onClose}>
+    <div className="scrim" onClick={handleClose}>
       <div className="sheet" style={{ maxWidth: 460, padding: 26 }} onClick={e => e.stopPropagation()}>
-        <button className="icon-x" onClick={onClose}><Icon name="xmark" /></button>
+        <button className="icon-x" onClick={handleClose}><Icon name="xmark" /></button>
         <h2 style={{ margin: '0 0 18px', fontSize: 20, fontWeight: 680, letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', gap: 10 }}>
           <Icon name="file-arrow-up" style={{ color: 'var(--violet)' }} /> Add Custom Mod
         </h2>
